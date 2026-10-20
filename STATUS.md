@@ -23,10 +23,11 @@ does **not** mean the code compiles, boots, or behaves correctly on a device.
 | OPS-5 | Tracking-parameter scrubber for shared text | `vendor_lenos/0001` (`app/LenosOpsec`) | Needs an app build and a real text-share flow; verify the link set with a local parser and no network |
 
 Patch count: 13 (5 frameworks/base, 5 Settings, 1 SetupWizard, 1 Seedvault, 1 vendor/lenos).
-Static tests: 78. The Settings series is tested both one patch at a time and in series order;
+Static tests: 79. The Settings series is tested both one patch at a time and in series order;
 the reset driver removes rename destinations and empty directories created by a series. The
 sequential test caught and fixed a `strings.xml`/`more_security_privacy_settings.xml` anchor
-collision between the four Settings patches.
+collision between the four Settings patches. The source-level review is in
+`docs/security-review.md`.
 
 ## Still to implement (in rough order)
 

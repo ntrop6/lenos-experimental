@@ -79,8 +79,9 @@ metadata sanitizer, offline tile, or screen-off clipboard wipe.
   policy: it has no `GosPackageState` state, no per-app allow/deny UI, no SELinux package domain and
   no denial notification. When enabled, newly started non-system, non-debuggable, non-profileable
   app processes clear their dumpable bit; existing processes and system apps are unchanged. Root
-  or any process with `CAP_SYS_PTRACE` (including the crash dumper) is not blocked. The setting is
-  off by default and must be built and boot-tested before it can be trusted.
+  or any process with `CAP_SYS_PTRACE` (including the crash dumper) is not blocked. An app that
+  deliberately calls `prctl(PR_SET_DUMPABLE, 1)` can undo its own bit. The setting is off by
+  default and must be built and boot-tested before it can be trusted.
 * **OPSEC tools are not cryptographic wipes.** Image re-encoding removes metadata from the output,
   but the source app, thumbnails and filesystem caches may retain the original. The Offline tile
   turns off airplane-mode radios but cannot prove the baseband is powered down; it does not cover
@@ -134,7 +135,8 @@ ANDROID_SERIAL=... tools/verify-device.sh
 
 Neither script builds, flashes, wipes, relocks, reboots or writes a setting. Behavioral checks that
 require a cable, a lock transition, a ptrace attempt or a reboot remain manual and are listed in
-`docs/verification.md`.
+`docs/verification.md`. The source-level threat review and findings are in
+[`docs/security-review.md`](docs/security-review.md).
 
 The `vendor_lenos` patch applies to the main `vendor/lenos` checkout and adds the experimental
 `LenosOpsec` package to `config/lenos.mk`. It is intentionally a separate patch from the main

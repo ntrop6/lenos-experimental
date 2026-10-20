@@ -71,6 +71,18 @@ class TestOpsecTools(LenosPatchTest):
             'androidx.core.content.FileProvider',
         )
 
+    def test_manifest_exports_are_intentional(self):
+        self.assert_contains(
+            "app/LenosOpsec/AndroidManifest.xml",
+            'android:name=".ScrubActivity"',
+            'android:name=".ScrubTextActivity"',
+            'android:name=".OfflineTileService"',
+            'android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"',
+            'android:authorities="org.lenos.opsec.files"',
+            'android:exported="false"',
+            'android:grantUriPermissions="true"',
+        )
+
     def test_app_has_no_network_permission_or_code(self):
         manifest = self.text("app/LenosOpsec/AndroidManifest.xml")
         self.assertNotIn("android.permission.INTERNET", manifest)
