@@ -18,7 +18,7 @@ upstream files are:
 | lenOS patch | GrapheneOS source |
 |---|---|
 | `0001-system-app-update-verity.patch` | `services/core/java/com/android/server/pm/PackageVerityExt.java`; hooks in `services/core/java/com/android/server/pm/InstallPackageHelper.java` (`scanPackageForInitLI`, `preparePackageLI`) |
-| `0002-screenshot-sound-settings.patch` | `packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundController.kt` and `ScreenshotSoundPolicy.kt` |
+| `0002-screenshot-sound-settings.patch` | `packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundController.kt` and `ScreenshotSoundPolicy.kt`; the existing `multivalentTests` for both classes |
 
 ## Deliberate deviations
 
@@ -39,12 +39,17 @@ upstream files are:
 
 ### #25 — screenshot sound
 
-* The GrapheneOS diff is applied to the same two SystemUI classes. The `screenshotRemoveNonforcedSound`
+* The GrapheneOS diff is applied to the same two SystemUI classes and their existing
+  `multivalentTests`. The `screenshotRemoveNonforcedSound`
   aconfig flag remains in place (it is a separate GrapheneOS feature that removes the non-forced
   sound on devices where it should not exist); only the `screenshotForceShutterSound` gate around
   registration and playback is removed.
 * The forced-shutter path is unchanged: `MediaActionSound.mustPlayShutterSound()` still forces the
   sound when the camera is open, even if sound effects are disabled.
+* **lenOS deviation:** GrapheneOS branch 17 checks `SOUND_EFFECTS_ENABLED` before evaluating the
+  forced path, which can silence a legally required shutter sound when touch sounds are off. lenOS
+  evaluates `shouldForceShutterSound()` first and gates only the non-forced player. The test
+  `screenshotSoundForced_ignoresSoundEffectsSetting` pins that behavior.
 * The GrapheneOS implementation moved `registerAvailabilityCallback` into an application-scoped
   coroutine and made `shouldForceShutterSound()` suspend. That is a required consequence of
   removing the aconfig guard: the callback must exist on every build, not only on builds where the

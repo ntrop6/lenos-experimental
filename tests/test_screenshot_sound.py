@@ -2,8 +2,9 @@
 
 GrapheneOS removes the `screenshotForceShutterSound` aconfig gate around the
 non-forced screenshot sound and gates it on `Settings.System.SOUND_EFFECTS_ENABLED`
-instead. Forced shutter regions are unchanged: `MediaActionSound.mustPlayShutterSound()`
-still wins when the camera is open.
+instead. lenOS evaluates the forced-shutter path first so a mandatory shutter
+sound is never suppressed by the touch-sounds setting; the non-forced path is
+the only one gated.
 """
 from __future__ import annotations
 
@@ -17,23 +18,55 @@ CONTROLLER = ("packages/SystemUI/src/com/android/systemui/screenshot/"
               "ScreenshotSoundController.kt")
 POLICY = ("packages/SystemUI/src/com/android/systemui/screenshot/"
           "ScreenshotSoundPolicy.kt")
+CONTROLLER_TEST = ("packages/SystemUI/multivalentTests/src/com/android/systemui/"
+                   "screenshot/ScreenshotSoundControllerTest.kt")
+POLICY_TEST = ("packages/SystemUI/multivalentTests/src/com/android/systemui/"
+               "screenshot/ScreenshotSoundPolicyTest.kt")
 
 
 class TestScreenshotSound(LenosPatchTest):
     PROJECT = "frameworks/base"
     PATCHES = [PATCH]
 
-    def test_patch_is_limited_to_the_screenshot_sound_classes(self):
+    def test_patch_is_limited_to_the_screenshot_sound_classes_and_their_tests(self):
         patch = VENDOR / "patches" / ALIAS / PATCH
-        self.assertEqual(sorted(patch_paths(patch)), sorted([CONTROLLER, POLICY]))
+        self.assertEqual(
+            sorted(patch_paths(patch)),
+            sorted([CONTROLLER, POLICY, CONTROLLER_TEST, POLICY_TEST]),
+        )
 
-    def test_controller_honours_sound_effects_before_playing(self):
+    def test_existing_tests_are_updated_to_the_new_constructor(self):
+        self.assert_contains(
+            CONTROLLER_TEST,
+            "FakeSystemSettingsRepository",
+            "fakeSystemSettingsRepo.setInt(Settings.System.SOUND_EFFECTS_ENABLED, 1)",
+            "fakeSystemSettingsRepo.setInt(Settings.System.SOUND_EFFECTS_ENABLED, 0)",
+            "soundEffectsDisabled_noSoundPlays",
+            "screenshotSoundForced_ignoresSoundEffectsSetting",
+            "ScreenshotSoundControllerImpl(",
+            "fakeSystemSettingsRepo,",
+        )
+        self.assert_contains(
+            POLICY_TEST,
+            "ScreenshotSoundPolicy(",
+            "testDispatcher,",
+            "testScope,",
+            "onBlocking { mustPlayShutterSound() }",
+        )
+        self.assert_not_contains(
+            POLICY_TEST,
+            "FLAG_SCREENSHOT_FORCE_SHUTTER_SOUND",
+            "Flags.FLAG_SCREENSHOT_FORCE_SHUTTER_SOUND",
+        )
+
+    def test_controller_gates_only_the_non_forced_sound(self):
         body = self.text(CONTROLLER)
+        force = body.index("if (soundPolicy.shouldForceShutterSound())")
         check = body.index("Settings.System.SOUND_EFFECTS_ENABLED")
-        play = body.index("withContext(bgDispatcher)")
-        self.assertLess(check, play)
-        self.assertIn("systemSettings.getInt(", body)
-        self.assertIn("return", body[check:play])
+        player = body.index("player.await()?.start()")
+        self.assertLess(force, check)
+        self.assertLess(check, player)
+        self.assertIn("return@withContext", body[check:player])
 
     def test_policy_no_longer_uses_the_aconfig_gate(self):
         self.assert_not_contains(POLICY, "screenshotForceShutterSound")
@@ -68,6 +101,12 @@ class TestScreenshotSound(LenosPatchTest):
         )
         self.assert_balanced(POLICY)
         self.assert_balanced(CONTROLLER)
+        self.assert_balanced(POLICY_TEST)
+        self.assert_balanced(CONTROLLER_TEST)
+        self.assert_not_contains(
+            CONTROLLER_TEST,
+            "whenever(soundPolicy.shouldForceShutterSound())",
+        )
 
 
 if __name__ == "__main__":

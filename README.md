@@ -86,8 +86,8 @@ The suite proves:
 * the boot scan, install-time checks, fs-verity loop, versionCode comparison, and signing
   capability checks are present and ordered correctly;
 * the debug escape hatches are guarded by `Build.IS_DEBUGGABLE`;
-* the screenshot-sound patch is limited to the two SystemUI classes and keeps the forced-shutter
-  path intact.
+* the screenshot-sound patch is limited to the two SystemUI classes, their existing
+  `multivalentTests`, and keeps the forced-shutter path intact.
 
 These are **not** runtime tests. The real verification list is in `docs/verification.md`.
 
