@@ -33,6 +33,21 @@ window. Every patch is still a strict `git apply` diff against the same pinned t
 `STATUS.md` tracks the remaining untestable workstreams and the exact reason each is not in this
 first batch. Do not read the table above as a statement that the rest of the roadmap is done.
 
+## Known limitations
+
+* **#20/#21 require fs-verity on the update APK.** AOSP only sets fs-verity up when the staged APK
+  has a v4 signature (`.idsig`). A system-app update installed without one will be rejected; that is
+  the intended fail-closed behavior, not a bug. Debuggable builds have the documented escape
+  properties for recovery. Do not weaken this on a user build to make an ad-hoc update install.
+* **The verifier keeps the system-image package in memory for the boot.** It is intentionally not
+  invalidated when an update is installed: the next install must still be compared against the
+  immutable package, not against the previous `/data` update.
+* **#25 uses the existing system sound-effects setting.** There is no new lenOS-only screenshot
+  sound switch; turning off touch sounds also silences the non-forced screenshot sound. Forced
+  shutter regions still obey `MediaActionSound.mustPlayShutterSound()`.
+* **No runtime evidence exists yet.** The tests are source-level only. See
+  `docs/verification.md` for the checks that must pass after the first build.
+
 ## Apply / check
 
 The patches target the pinned workspace used by the main repository
