@@ -97,7 +97,7 @@ def is_applied(project_dir: Path, patch: Path) -> bool:
 
 
 def created_paths(patch: Path) -> list[str]:
-    """Files the patch creates (old side is /dev/null), as project-relative paths."""
+    """Files the patch creates or renames to, as project-relative paths."""
     out: list[str] = []
     old_is_null = False
     for line in patch.read_text(encoding="utf-8").splitlines():
@@ -108,6 +108,10 @@ def created_paths(patch: Path) -> list[str]:
             if old_is_null and p not in ("", "/dev/null"):
                 out.append(p[2:] if p.startswith("b/") else p)
             old_is_null = False
+        elif line.startswith(("rename to ", "copy to ")):
+            p = line.split(" to ", 1)[1].strip()
+            if p not in ("", "/dev/null"):
+                out.append(p[2:] if p.startswith("b/") else p)
     return out
 
 
@@ -138,6 +142,13 @@ def reset_project(project: str, pdir: Path, patches: list[Path]) -> None:
                     "The patch set does not match the pinned revision; do not reset blindly.")
             f.unlink()
             print(f"  removed {project}: {rel}")
+            parent = f.parent
+            while parent != pdir and parent.is_dir():
+                try:
+                    parent.rmdir()
+                except OSError:
+                    break
+                parent = parent.parent
 
     status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
                             cwd=pdir, capture_output=True, text=True)

@@ -140,6 +140,15 @@ The `vendor_lenos` patch applies to the main `vendor/lenos` checkout and adds th
 `LenosOpsec` package to `config/lenos.mk`. It is intentionally a separate patch from the main
 product config; only an experimental build should include it.
 
+The #23 partial patch touches `core/jni/android_util_Process.cpp` and
+`core/java/android/app/ActivityThread.java`. If the framework checkout is sparse, add those paths
+before running the patch checker or tests:
+
+```bash
+git -C "$WS/frameworks/base" sparse-checkout add core/jni \
+    core/java/android/app/ActivityThread.java
+```
+
 ## Tests
 
 ```bash
@@ -167,7 +176,10 @@ The suite proves:
   `OP_READ_CLIPBOARD` AppOp without adding a framework surface, and the link scrubber keeps only
   known functional query parameters while remaining offline;
 * the #23 partial clears `PR_SET_DUMPABLE` only for opted-in, non-system/debuggable/profileable
-  app processes and does not pretend to be the GrapheneOS per-app policy.
+  app processes and does not pretend to be the GrapheneOS per-app policy;
+* the Settings patches are also applied **in series order** in a sandbox, not just one at a time,
+  so a second patch cannot silently stop applying after the first one changes the same
+  `strings.xml` or preference XML.
 
 These are **not** runtime tests. The real verification list is in `docs/verification.md`.
 

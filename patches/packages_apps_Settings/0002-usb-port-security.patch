@@ -2,10 +2,8 @@ diff --git a/res/values/strings.xml b/res/values/strings.xml
 index ccc591f..0283b30 100644
 --- a/res/values/strings.xml
 +++ b/res/values/strings.xml
-@@ -14949,4 +14949,23 @@
-     <string name="safety_center_device_finder_search_terms"></string>
-     <!-- Safety Center system component update search terms [CHAR LIMIT=NONE] -->
-     <string name="safety_center_system_component_update_search_terms"></string>
+@@ -14947,2 +14947,21 @@
+     <string name="safety_center_account_security_search_terms"></string>
 +    <!-- lenOS USB port security -->
 +    <string name="usb_port_security_title">USB data when locked</string>
 +    <string name="usb_port_security_summary">Block USB data lines while the device is locked. Charging continues.</string>
@@ -25,15 +23,13 @@ index ccc591f..0283b30 100644
 +    <string name="usb_port_security_confirm_enable">Allow</string>
 +    <string name="usb_port_security_error">Could not change the USB port policy. Unlock the device and try again.</string>
 +
- </resources>
+     <!-- Safety Center device finder source search terms [CHAR LIMIT=NONE] -->
 diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
 index 0068872..66f1977 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -165,6 +165,13 @@
-         android:fragment="com.android.settings.enterprise.EnterprisePrivacySettings"
+@@ -166,2 +166,9 @@
          settings:controller="com.android.settings.enterprise.EnterprisePrivacyPreferenceController"/>
- 
 +    <Preference
 +        android:order="240"
 +        android:key="usb_port_security"
@@ -41,9 +37,7 @@ index 0068872..66f1977 100644
 +        android:summary="@string/usb_port_security_summary"
 +        android:fragment="com.android.settings.security.UsbPortSecuritySettings" />
 +
-     <Preference
-         android:order="243"
-         android:key="financed_privacy"
+ 
 diff --git a/src/com/android/settings/security/UsbPortSecuritySettings.java b/src/com/android/settings/security/UsbPortSecuritySettings.java
 new file mode 100644
 index 0000000..404868a

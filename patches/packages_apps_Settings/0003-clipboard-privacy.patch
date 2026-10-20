@@ -2,25 +2,21 @@ diff --git a/res/values/strings.xml b/res/values/strings.xml
 index ccc591f..17399be 100644
 --- a/res/values/strings.xml
 +++ b/res/values/strings.xml
-@@ -14949,4 +14949,10 @@
-     <string name="safety_center_device_finder_search_terms"></string>
-     <!-- Safety Center system component update search terms [CHAR LIMIT=NONE] -->
-     <string name="safety_center_system_component_update_search_terms"></string>
+@@ -14941,2 +14941,8 @@
+     <string name="safety_center_app_security_footer"></string>
 +    <!-- lenOS clipboard privacy -->
 +    <string name="clipboard_privacy_title">Clipboard privacy</string>
 +    <string name="clipboard_privacy_summary">Clear copied content when the screen turns off.</string>
 +    <string name="clipboard_clear_on_screen_off_title">Clear clipboard when screen turns off</string>
 +    <string name="clipboard_clear_on_screen_off_summary">Removes copied text, images and URIs from the clipboard when the screen turns off. The clipboard is wiped before the device is locked.</string>
 +
- </resources>
+     <!-- Safety Center app security source search terms [CHAR LIMIT=NONE] -->
 diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_privacy_settings.xml
 index 0068872..688e26f 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -165,6 +165,13 @@
-         android:fragment="com.android.settings.enterprise.EnterprisePrivacySettings"
-         settings:controller="com.android.settings.enterprise.EnterprisePrivacyPreferenceController"/>
- 
+@@ -174,2 +174,9 @@
+         settings:controller="com.android.settings.enterprise.FinancedPrivacyPreferenceController"/>
 +    <Preference
 +        android:order="245"
 +        android:key="clipboard_privacy"
@@ -28,9 +24,7 @@ index 0068872..688e26f 100644
 +        android:summary="@string/clipboard_privacy_summary"
 +        android:fragment="com.android.settings.security.ClipboardPrivacySettings" />
 +
-     <Preference
-         android:order="243"
-         android:key="financed_privacy"
+ 
 diff --git a/src/com/android/settings/security/ClipboardPrivacySettings.java b/src/com/android/settings/security/ClipboardPrivacySettings.java
 new file mode 100644
 index 0000000..63a4b9e

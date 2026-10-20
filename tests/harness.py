@@ -70,7 +70,7 @@ def patch_paths(patch: Path) -> list[str]:
 
 
 def patch_created_paths(patch: Path) -> set[str]:
-    """Files the patch creates (old side is /dev/null)."""
+    """Files the patch creates or renames to."""
     created: set[str] = set()
     old_is_null = False
     for line in patch.read_text(encoding="utf-8").splitlines():
@@ -81,6 +81,10 @@ def patch_created_paths(patch: Path) -> set[str]:
             if old_is_null and p not in ("", "/dev/null"):
                 created.add(p[2:] if p.startswith("b/") else p)
             old_is_null = False
+        elif line.startswith(("rename to ", "copy to ")):
+            p = line.split(" to ", 1)[1].strip()
+            if p not in ("", "/dev/null"):
+                created.add(p[2:] if p.startswith("b/") else p)
     return created
 
 

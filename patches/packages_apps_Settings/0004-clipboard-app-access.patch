@@ -2,9 +2,7 @@ diff --git a/res/values/strings.xml b/res/values/strings.xml
 index ccc591f..cbb45de 100644
 --- a/res/values/strings.xml
 +++ b/res/values/strings.xml
-@@ -14949,4 +14949,12 @@
-     <string name="safety_center_device_finder_search_terms"></string>
-     <!-- Safety Center system component update search terms [CHAR LIMIT=NONE] -->
+@@ -14951,2 +14951,10 @@
      <string name="safety_center_system_component_update_search_terms"></string>
 +    <!-- lenOS per-app clipboard access (Secure Paste stage 2) -->
 +    <string name="clipboard_app_access_title">Clipboard access by app</string>
@@ -19,10 +17,8 @@ diff --git a/res/xml/more_security_privacy_settings.xml b/res/xml/more_security_
 index 0068872..033e371 100644
 --- a/res/xml/more_security_privacy_settings.xml
 +++ b/res/xml/more_security_privacy_settings.xml
-@@ -183,6 +183,13 @@
-                 android:targetPackage="@string/config_device_lock_controller_package_name"/>
-     </Preference>
- 
+@@ -206,2 +206,9 @@
+         settings:controller="com.android.settings.security.EncryptionStatusPreferenceController" />
 +    <Preference
 +        android:order="246"
 +        android:key="clipboard_app_access"
@@ -30,9 +26,7 @@ index 0068872..033e371 100644
 +        android:summary="@string/clipboard_app_access_summary"
 +        android:fragment="com.android.settings.security.ClipboardAppAccessSettings" />
 +
-     <Preference
-         android:order="250"
-         android:key="sim_lock_settings"
+ 
 diff --git a/src/com/android/settings/security/ClipboardAppAccessSettings.java b/src/com/android/settings/security/ClipboardAppAccessSettings.java
 new file mode 100644
 index 0000000..4e35c22
