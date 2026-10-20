@@ -1,0 +1,80 @@
+diff --git a/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundController.kt b/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundController.kt
+index 203c544a..9d531fc7 100644
+--- a/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundController.kt
++++ b/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundController.kt
+@@ -57,6 +57,7 @@ class ScreenshotSoundControllerImpl
+ constructor(
+     private val soundProvider: ScreenshotSoundProvider,
+     private val soundPolicy: ScreenshotSoundPolicy,
++    private val systemSettings: com.android.systemui.shared.settings.data.repository.SystemSettingsRepository,
+     @Application private val coroutineScope: CoroutineScope,
+     @Background private val bgDispatcher: CoroutineDispatcher,
+ ) : ScreenshotSoundController {
+@@ -77,6 +78,10 @@ constructor(
+         }
+ 
+     override suspend fun playScreenshotSound() {
++        if (systemSettings.getInt(android.provider.Settings.System.SOUND_EFFECTS_ENABLED, 0) != 1) {
++            return
++        }
++
+         withContext(bgDispatcher) {
+             try {
+                 if (soundPolicy.shouldForceShutterSound()) {
+diff --git a/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundPolicy.kt b/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundPolicy.kt
+index 668e3c0c..43420379 100644
+--- a/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundPolicy.kt
++++ b/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotSoundPolicy.kt
+@@ -18,10 +18,15 @@ package com.android.systemui.screenshot
+ 
+ import android.hardware.camera2.CameraManager
+ import android.media.MediaActionSound
+-import com.android.systemui.Flags.screenshotForceShutterSound
++import com.android.systemui.dagger.qualifiers.Application
++import com.android.systemui.dagger.qualifiers.Background
+ import com.android.systemui.dagger.qualifiers.Main
+ import java.util.concurrent.Executor
+ import javax.inject.Inject
++import kotlinx.coroutines.CoroutineDispatcher
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
+ 
+ /** Policy class to determine if a shutter sound should be forced when taking a screenshot. */
+ open class ScreenshotSoundPolicy
+@@ -30,11 +35,13 @@ constructor(
+     cameraManager: CameraManager,
+     private val shutterPolicy: MediaShutterSoundPolicy,
+     @Main private val mainExecutor: Executor,
++    @Background private val bgDispatcher: CoroutineDispatcher,
++    @Application private val applicationScope: CoroutineScope,
+ ) {
+     private var cameraOpen: Boolean = false
+ 
+     init {
+-        if (screenshotForceShutterSound()) {
++        applicationScope.launch(bgDispatcher) {
+             cameraManager.registerAvailabilityCallback(
+                 mainExecutor,
+                 object : CameraManager.AvailabilityCallback() {
+@@ -50,13 +57,15 @@ constructor(
+         }
+     }
+ 
+-    fun shouldForceShutterSound(): Boolean {
+-        return screenshotForceShutterSound() && shutterPolicy.mustPlayShutterSound() && cameraOpen
++    suspend fun shouldForceShutterSound(): Boolean {
++        return shutterPolicy.mustPlayShutterSound() && cameraOpen
+     }
+ }
+ 
+-class MediaShutterSoundPolicy @Inject constructor() {
+-    fun mustPlayShutterSound(): Boolean {
+-        return MediaActionSound.mustPlayShutterSound()
++class MediaShutterSoundPolicy
++@Inject
++constructor(@Background private val bgDispatcher: CoroutineDispatcher) {
++    suspend fun mustPlayShutterSound(): Boolean {
++        return withContext(bgDispatcher) { MediaActionSound.mustPlayShutterSound() }
+     }
+ }
