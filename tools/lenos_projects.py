@@ -15,6 +15,8 @@ PROJECT_ALIASES = {
     "packages/apps/Updater": "packages_apps_Updater",
     "packages/apps/LineageParts": "packages_apps_LineageParts",
     "packages/apps/CellBroadcastReceiver": "packages_apps_CellBroadcastReceiver",
+    "packages/apps/SetupWizard": "packages_apps_SetupWizard",
+    "packages/apps/Seedvault": "packages_apps_Seedvault",
     "packages/modules/Connectivity": "packages_modules_Connectivity",
     "packages/modules/Permission": "packages_modules_Permission",
     "packages/modules/Wifi": "packages_modules_Wifi",
@@ -28,6 +30,7 @@ PROJECT_ALIASES = {
     "packages/services/Telephony": "packages_services_Telephony",
     "lineage-sdk": "lineage_sdk",
     "vendor/lineage": "vendor_lineage",
+    "vendor/lenos": "vendor_lenos",
     "device/nothing/asteroids": "device_nothing_asteroids",
     "kernel/nothing/sm7635": "kernel_nothing_sm7635",
 }

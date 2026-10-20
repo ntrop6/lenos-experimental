@@ -16,7 +16,7 @@ The VM used for lenOS builds is currently unreachable. These changes are therefo
 
 * no `m`/`soong` build has been run;
 * no image has been flashed;
-* no boot-time, install-time, Settings UI, or performance behavior has been observed.
+* no boot-time, install-time, Settings UI, HAL or performance behavior has been observed.
 
 Keeping them here means a failed experiment cannot make the 1.0 patchkit un-appliable, while the
 implementations remain reviewable, testable at the source level, and ready for the first build
@@ -24,14 +24,25 @@ window. Every patch is still a strict `git apply` diff against the same pinned t
 
 ## Current contents
 
-| Feature | Files | State |
+| Feature | Patch | State |
 |---|---|---|
 | **#20** fs-verity enforcement for system-app updates | `frameworks_base/0001-system-app-update-verity.patch` | Implemented; static checks pass; **not built or booted** |
 | **#21** reject same/older system-app updates across reboot | same patch (GrapheneOS `PackageVerityExt` pair) | Implemented; static checks pass; **not built or booted** |
 | **#25** screenshot sound follows the system sound-effects setting | `frameworks_base/0002-screenshot-sound-settings.patch` | Implemented; static checks pass; **not built or booted** |
+| **#22** USB-C data-line control (charging-only / when-locked / AFU) | `frameworks_base/0003-usb-port-security.patch` + `packages_apps_Settings/0002-usb-port-security.patch` | Implemented against the AOSP per-port HAL; **HAL support on `asteroids` unverified** |
+| **#17** on-device crash/ANR log viewer | `packages_apps_Settings/0001-crash-log-viewer.patch` | Implemented; local-only; **not built** |
+| **#28** Setup Wizard unlocked-bootloader warning | `packages_apps_SetupWizard/0001-bootloader-unlocked-warning.patch` | Implemented; **not built** |
+| **#27** Seedvault/GrapheneOS app-id isolation | `packages_apps_Seedvault/0001-grapheneos-app-id-prefix.patch` | Implemented prefix port + GrapheneOS chunker; **restore compatibility unverified** |
+| **OPS-1** metadata-scrubbing share target | `vendor_lenos/0001-opsec-tools.patch` (`app/LenosOpsec`) | Implemented; re-encodes images; **not built** |
+| **OPS-2** one-tap Offline radio tile | same patch | Implemented; **not built** |
+| **OPS-3** clear clipboard on screen off | `frameworks_base/0004-clipboard-clear-on-screen-off.patch` + `packages_apps_Settings/0003-clipboard-privacy.patch` | Implemented; opt-in; **not built** |
 
 `STATUS.md` tracks the remaining untestable workstreams and the exact reason each is not in this
-first batch. Do not read the table above as a statement that the rest of the roadmap is done.
+batch. Do not read the table above as a statement that the rest of the roadmap is done.
+
+The new OPSEC tools are described, with their threat model and limits, in
+[`docs/opsec.md`](docs/opsec.md). They are lenOS-only work: GrapheneOS does not ship an equivalent
+metadata sanitizer, offline tile, or screen-off clipboard wipe.
 
 ## Known limitations
 
@@ -45,6 +56,27 @@ first batch. Do not read the table above as a statement that the rest of the roa
 * **#25 uses the existing system sound-effects setting.** There is no new lenOS-only screenshot
   sound switch; turning off touch sounds also silences the non-forced screenshot sound. Forced
   shutter regions still obey `MediaActionSound.mustPlayShutterSound()`.
+* **#22 needs a USB HAL that implements `enableUsbData`.** It deliberately does not use
+  GrapheneOS's vendor `sys.port_security_mode` / `security.deny_new_usb2` hooks. If the `asteroids`
+  HAL does not implement the standard operation, the policy is a no-op and the Settings screen
+  correctly reports unsupported. Modes 0 and 1 both block the data lines because the portable HAL
+  operation does not expose a safe VBUS-off operation. The default on user builds is
+  `MODE_CHARGING_ONLY_WHEN_LOCKED`; debug builds default to enabled so adb remains usable during
+  bring-up. The persistent key is GrapheneOS's `persist.security.usb_mode`.
+* **#17 reads DropBox, not a full crash-reporting service.** It shows crash/ANR/Java/watchdog
+  entries already present in DropBox, has no upload path and no automatic sharing. Settings needs
+  `READ_LOGS`; entries are bounded. It is a log viewer, not GrapheneOS's crash-reporting app.
+* **#27 preserves `com.stevesoltys.seedvault` as the application id.** Only the internal
+  GrapheneOS package prefix, permission names and chunker are ported. Existing LineageOS Seedvault
+  backups may not restore across the prefix change; test migration before relying on them.
+* **#28 is a warning, not a lock.** It appears on the Setup Wizard welcome page when
+  `ro.boot.verifiedbootstate` is not `green`; it does not block setup and does not encourage
+  re-locking an unsigned build.
+* **OPSEC tools are not cryptographic wipes.** Image re-encoding removes metadata from the output,
+  but the source app, thumbnails and filesystem caches may retain the original. The Offline tile
+  turns off airplane-mode radios but cannot prove the baseband is powered down; it does not cover
+  NFC. Clipboard wiping removes the system clipboard and URI grants, not copies kept inside apps,
+  IME history or autofill storage.
 * **No runtime evidence exists yet.** The tests are source-level only. See
   `docs/verification.md` for the checks that must pass after the first build.
 
@@ -67,9 +99,13 @@ $PY tools/lenos-patch.py --tree "$WS" --apply
 $PY tools/lenos-patch.py --tree "$WS" --reset
 ```
 
-`--reset` restores tracked files and deletes files these patches created
-(`PackageVerityExt.java`). The main repository's driver does not know about this repository; do not
-merge the two series blindly.
+`--reset` restores tracked files and deletes files these patches created (`PackageVerityExt.java`,
+the USB controller, the `LenosOpsec` app tree, etc.). The main repository's driver does not know
+about this repository; do not merge the two series blindly.
+
+The `vendor_lenos` patch applies to the main `vendor/lenos` checkout and adds the experimental
+`LenosOpsec` package to `config/lenos.mk`. It is intentionally a separate patch from the main
+product config; only an experimental build should include it.
 
 ## Tests
 
@@ -82,12 +118,19 @@ LENOS_PYTHON=/tmp/opencode/lenv/bin/python ./run-tests.sh
 The suite proves:
 
 * every patch applies cleanly to the pinned tree and is listed in `series`;
-* the new Java file parses with tree-sitter;
-* the boot scan, install-time checks, fs-verity loop, versionCode comparison, and signing
+* new and modified Java files parse with tree-sitter;
+* the #20/#21 boot scan, install-time checks, fs-verity loop, versionCode comparison and signing
   capability checks are present and ordered correctly;
-* the debug escape hatches are guarded by `Build.IS_DEBUGGABLE`;
-* the screenshot-sound patch is limited to the two SystemUI classes, their existing
-  `multivalentTests`, and keeps the forced-shutter path intact.
+* the screenshot-sound patch keeps the forced-shutter path intact;
+* #22 exposes the GrapheneOS-compatible mode constants and persistent property, registers the
+  keyguard listener, applies the policy through the per-port HAL and rejects ordinary re-enables
+  while blocking;
+* #17 stays local-only (DropBox tags, explicit share) and #28 is conditional on the verified-boot
+  property without blocking setup;
+* #27 uses the GrapheneOS prefix while keeping the public application id;
+* the OPSEC tools have no `INTERNET` permission or network code, the scrubber re-encodes rather
+  than copying EXIF, the Offline tile cuts airplane mode/Wi-Fi/Bluetooth, and the clipboard wipe is
+  per-user and off by default.
 
 These are **not** runtime tests. The real verification list is in `docs/verification.md`.
 
@@ -100,6 +143,7 @@ recovery. Do not flash an experimental build without explicit approval and a rec
 
 ## Provenance
 
-The implementations are ports of GrapheneOS code. The upstream source revisions, files, and the
-lenOS deviations are recorded in `docs/provenance.md`. New files carry Apache-2.0 headers crediting
-GrapheneOS and The lenOS Project. The repository is licensed under Apache-2.0 (`LICENSE`).
+The GrapheneOS-derived implementations record their upstream source revisions, files and lenOS
+deviations in `docs/provenance.md`. Original lenOS work (#17, #28 and the OPSEC tools) is marked as
+such. New files carry Apache-2.0 headers crediting GrapheneOS where applicable and The lenOS
+Project. The repository is licensed under Apache-2.0 (`LICENSE`).

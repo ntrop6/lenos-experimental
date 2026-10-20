@@ -1,0 +1,635 @@
+diff --git a/app/LenosOpsec/Android.bp b/app/LenosOpsec/Android.bp
+new file mode 100644
+index 0000000..acc7144
+--- /dev/null
++++ b/app/LenosOpsec/Android.bp
+@@ -0,0 +1,14 @@
++// lenOS OPSEC tools: metadata-scrubbing share target and offline tile.
++// Experimental companion app; not part of the lenOS 1.0 series.
++android_app {
++    name: "LenosOpsec",
++    srcs: ["src/**/*.java"],
++    resource_dirs: ["res"],
++    manifest: "AndroidManifest.xml",
++    platform_apis: true,
++    certificate: "platform",
++    static_libs: ["androidx.core_core-ktx"],
++    optimize: {
++        enabled: false,
++    },
++}
+diff --git a/app/LenosOpsec/AndroidManifest.xml b/app/LenosOpsec/AndroidManifest.xml
+new file mode 100644
+index 0000000..4263964
+--- /dev/null
++++ b/app/LenosOpsec/AndroidManifest.xml
+@@ -0,0 +1,63 @@
++<?xml version="1.0" encoding="utf-8"?>
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="org.lenos.opsec"
++    android:versionCode="1"
++    android:versionName="0.1">
++
++    <uses-sdk android:minSdkVersion="34" android:targetSdkVersion="36" />
++
++    <!-- The offline tile is platform-signed. Signature permissions do not
++         require a privileged-app allowlist. -->
++    <uses-permission android:name="android.permission.NETWORK_SETTINGS" />
++    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
++    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
++    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
++    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
++    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
++
++    <application
++        android:label="@string/app_name"
++        android:icon="@drawable/ic_offline"
++        android:allowBackup="false"
++        android:usesCleartextTraffic="false"
++        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
++
++        <activity
++            android:name=".ScrubActivity"
++            android:exported="true"
++            android:label="@string/scrub_title"
++            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
++            <intent-filter>
++                <action android:name="android.intent.action.SEND" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <data android:mimeType="image/*" />
++            </intent-filter>
++            <intent-filter>
++                <action android:name="android.intent.action.SEND_MULTIPLE" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <data android:mimeType="image/*" />
++            </intent-filter>
++        </activity>
++
++        <service
++            android:name=".OfflineTileService"
++            android:exported="true"
++            android:label="@string/offline_tile_label"
++            android:icon="@drawable/ic_offline"
++            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
++            <intent-filter>
++                <action android:name="android.service.quicksettings.action.QS_TILE" />
++            </intent-filter>
++        </service>
++
++        <provider
++            android:name="androidx.core.content.FileProvider"
++            android:authorities="org.lenos.opsec.files"
++            android:exported="false"
++            android:grantUriPermissions="true">
++            <meta-data
++                android:name="android.support.FILE_PROVIDER_PATHS"
++                android:resource="@xml/file_paths" />
++        </provider>
++    </application>
++</manifest>
+diff --git a/app/LenosOpsec/res/drawable/ic_offline.xml b/app/LenosOpsec/res/drawable/ic_offline.xml
+new file mode 100644
+index 0000000..ea05c0a
+--- /dev/null
++++ b/app/LenosOpsec/res/drawable/ic_offline.xml
+@@ -0,0 +1,9 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24">
++    <path
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M2,2 L22,22 L20.6,23.4 L1.4,3.4 Z M12,3 C7.6,3 3.8,4.6 1,7.2 L3.2,9.8 C5.4,7.9 8.6,6.7 12,6.7 C15.4,6.7 18.6,7.9 20.8,9.8 L23,7.2 C20.2,4.6 16.4,3 12,3 Z M12,10 C9.2,10 6.6,11 4.6,12.7 L6.8,15.2 C8.2,14 10,13.3 12,13.3 C14,13.3 15.8,14 17.2,15.2 L18.2,14.1 L19.4,16.6 C19.3,16.6 19.2,16.7 19.1,16.8 L12,23.9 L9.4,21.3 L11.3,19.4 L12,18.7 L13.4,20.2 L16.6,16.9 C15.2,15.9 13.7,15.3 12,15.3 C10.9,15.3 9.8,15.6 8.8,16.1 L7.6,14.9 C9,14.2 10.5,13.8 12,13.8 C14.4,13.8 16.6,14.7 18.3,16.2 L20.3,14.1 C18,12 15.1,10.8 12,10.8 Z" />
++</vector>
+diff --git a/app/LenosOpsec/res/layout/activity_scrub.xml b/app/LenosOpsec/res/layout/activity_scrub.xml
+new file mode 100644
+index 0000000..094c817
+--- /dev/null
++++ b/app/LenosOpsec/res/layout/activity_scrub.xml
+@@ -0,0 +1,72 @@
++<?xml version="1.0" encoding="utf-8"?>
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:fillViewport="true">
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="24dp">
++
++        <TextView
++            android:id="@+id/title"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:text="@string/scrub_title"
++            android:textAppearance="?android:attr/textAppearanceLarge"
++            android:textStyle="bold" />
++
++        <TextView
++            android:id="@+id/explanation"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="@string/scrub_explanation" />
++
++        <ImageView
++            android:id="@+id/preview"
++            android:layout_width="match_parent"
++            android:layout_height="220dp"
++            android:layout_marginTop="20dp"
++            android:adjustViewBounds="true"
++            android:contentDescription="@string/scrub_choose"
++            android:scaleType="centerInside" />
++
++        <ProgressBar
++            android:id="@+id/progress"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="center_horizontal"
++            android:layout_marginTop="16dp"
++            android:visibility="gone" />
++
++        <TextView
++            android:id="@+id/status"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:textColor="?android:attr/textColorSecondary" />
++
++        <Button
++            android:id="@+id/share"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="20dp"
++            android:text="@string/scrub_share" />
++
++        <Button
++            android:id="@+id/save"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/scrub_save" />
++
++        <Button
++            android:id="@+id/cancel"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/scrub_cancel" />
++    </LinearLayout>
++</ScrollView>
+diff --git a/app/LenosOpsec/res/values/strings.xml b/app/LenosOpsec/res/values/strings.xml
+new file mode 100644
+index 0000000..2cea642
+--- /dev/null
++++ b/app/LenosOpsec/res/values/strings.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">lenOS OPSEC</string>
++    <string name="scrub_title">Remove image metadata</string>
++    <string name="scrub_explanation">The selected image is decoded and re-encoded without EXIF, GPS, XMP, ICC or file-name metadata. Re-encoding can change quality. No data leaves the device.</string>
++    <string name="scrub_share">Remove metadata and share</string>
++    <string name="scrub_save">Save sanitized copy</string>
++    <string name="scrub_cancel">Cancel</string>
++    <string name="scrub_working">Removing metadata…</string>
++    <string name="scrub_nothing">No image was provided.</string>
++    <string name="scrub_too_many">Select at most 20 images at a time.</string>
++    <string name="scrub_failed">Could not sanitize the image.</string>
++    <string name="scrub_saved">Saved %1$d sanitized image(s) to Pictures/lenOS.</string>
++    <string name="scrub_shared">Sanitized image is ready to share.</string>
++    <string name="scrub_choose">Choose an image to sanitize</string>
++    <string name="offline_tile_label">Offline</string>
++    <string name="offline_tile_on">Radios off</string>
++    <string name="offline_tile_off">Radios on</string>
++</resources>
+diff --git a/app/LenosOpsec/res/xml/file_paths.xml b/app/LenosOpsec/res/xml/file_paths.xml
+new file mode 100644
+index 0000000..9f3922f
+--- /dev/null
++++ b/app/LenosOpsec/res/xml/file_paths.xml
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="utf-8"?>
++<paths>
++    <cache-path name="scrubbed" path="scrubbed/" />
++</paths>
+diff --git a/app/LenosOpsec/src/org/lenos/opsec/ImageScrubber.java b/app/LenosOpsec/src/org/lenos/opsec/ImageScrubber.java
+new file mode 100644
+index 0000000..0e028de
+--- /dev/null
++++ b/app/LenosOpsec/src/org/lenos/opsec/ImageScrubber.java
+@@ -0,0 +1,98 @@
++package org.lenos.opsec;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.graphics.Bitmap;
++import android.graphics.ImageDecoder;
++import android.net.Uri;
++import android.util.Size;
++
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.util.UUID;
++
++/** Re-encodes an image so that no EXIF/GPS/XMP/file-name metadata survives. */
++final class ImageScrubber {
++    private static final int MAX_DIMENSION = 4096;
++    private static final int JPEG_QUALITY = 95;
++
++    static final class Result {
++        final Uri uri;
++        final String mimeType;
++        final int width;
++        final int height;
++
++        Result(Uri uri, String mimeType, int width, int height) {
++            this.uri = uri;
++            this.mimeType = mimeType;
++            this.width = width;
++            this.height = height;
++        }
++    }
++
++    private ImageScrubber() {
++    }
++
++    static Result scrub(Context context, Uri source) throws IOException {
++        final ContentResolver resolver = context.getContentResolver();
++        String sourceType = resolver.getType(source);
++        if (sourceType == null) {
++            sourceType = "image/jpeg";
++        }
++        if ("image/gif".equals(sourceType)) {
++            throw new IOException("animated GIF is not supported");
++        }
++
++        final ImageDecoder.Source decoderSource = ImageDecoder.createSource(resolver, source);
++        final Bitmap bitmap;
++        try {
++            bitmap = ImageDecoder.decodeBitmap(decoderSource, (decoder, info, src) -> {
++                final Size size = info.getSize();
++                final int largest = Math.max(size.getWidth(), size.getHeight());
++                if (largest > MAX_DIMENSION) {
++                    final double scale = (double) MAX_DIMENSION / largest;
++                    decoder.setTargetSize(
++                            Math.max(1, (int) (size.getWidth() * scale)),
++                            Math.max(1, (int) (size.getHeight() * scale)));
++                }
++            });
++        } catch (ImageDecoder.DecodeException e) {
++            throw new IOException("unable to decode image", e);
++        }
++
++        final String outputType;
++        final Bitmap.CompressFormat format;
++        final String extension;
++        if ("image/png".equals(sourceType)) {
++            outputType = "image/png";
++            format = Bitmap.CompressFormat.PNG;
++            extension = "png";
++        } else if ("image/webp".equals(sourceType)) {
++            outputType = "image/webp";
++            format = Bitmap.CompressFormat.WEBP_LOSSY;
++            extension = "webp";
++        } else {
++            outputType = "image/jpeg";
++            format = Bitmap.CompressFormat.JPEG;
++            extension = "jpg";
++        }
++
++        final File dir = new File(context.getCacheDir(), "scrubbed");
++        if (!dir.exists() && !dir.mkdirs()) {
++            throw new IOException("unable to create cache directory");
++        }
++        final int width = bitmap.getWidth();
++        final int height = bitmap.getHeight();
++        final File output = new File(dir, UUID.randomUUID() + "." + extension);
++        try (FileOutputStream out = new FileOutputStream(output)) {
++            if (!bitmap.compress(format, JPEG_QUALITY, out)) {
++                throw new IOException("unable to encode image");
++            }
++        } finally {
++            bitmap.recycle();
++        }
++
++        return new Result(Uri.fromFile(output), outputType, width, height);
++    }
++}
+diff --git a/app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java b/app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java
+new file mode 100644
+index 0000000..5f29a89
+--- /dev/null
++++ b/app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java
+@@ -0,0 +1,86 @@
++package org.lenos.opsec;
++
++import android.bluetooth.BluetoothAdapter;
++import android.content.Intent;
++import android.graphics.drawable.Icon;
++import android.net.ConnectivityManager;
++import android.net.wifi.WifiManager;
++import android.os.UserHandle;
++import android.provider.Settings;
++import android.service.quicksettings.Tile;
++import android.service.quicksettings.TileService;
++
++/**
++ * One-tap radio kill switch. Airplane mode is the authoritative switch; Wi-Fi
++ * and Bluetooth are switched off first so they cannot linger after the tile
++ * turns airplane mode on.
++ */
++public class OfflineTileService extends TileService {
++    @Override
++    public void onStartListening() {
++        super.onStartListening();
++        updateTile();
++    }
++
++    @Override
++    public void onClick() {
++        final boolean enable = !isAirplaneModeOn();
++        if (enable) {
++            turnOffRadios();
++        }
++        setAirplaneMode(enable);
++        updateTile();
++    }
++
++    private boolean isAirplaneModeOn() {
++        return Settings.Global.getInt(getContentResolver(),
++                Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
++    }
++
++    private void setAirplaneMode(boolean enable) {
++        try {
++            final ConnectivityManager cm = getSystemService(ConnectivityManager.class);
++            if (cm == null) {
++                throw new IllegalStateException("no ConnectivityManager");
++            }
++            cm.setAirplaneMode(enable);
++        } catch (Throwable t) {
++            Settings.Global.putInt(getContentResolver(),
++                    Settings.Global.AIRPLANE_MODE_ON, enable ? 1 : 0);
++            final Intent intent = new Intent(Intent.ACTION_AIRPLANE_MODE_CHANGED);
++            intent.putExtra("state", enable);
++            sendBroadcastAsUser(intent, UserHandle.ALL);
++        }
++    }
++
++    private void turnOffRadios() {
++        final WifiManager wifi = getSystemService(WifiManager.class);
++        if (wifi != null && wifi.isWifiEnabled()) {
++            wifi.setWifiEnabled(false);
++        }
++        final BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
++        if (bluetooth != null && bluetooth.isEnabled()) {
++            try {
++                bluetooth.disable();
++            } catch (SecurityException e) {
++                // The platform signature grants BLUETOOTH_PRIVILEGED; if the
++                // runtime BLUETOOTH_CONNECT grant is missing, do not crash the
++                // tile. Airplane mode still cuts the radio.
++            }
++        }
++    }
++
++    private void updateTile() {
++        final Tile tile = getQsTile();
++        if (tile == null) {
++            return;
++        }
++        final boolean on = isAirplaneModeOn();
++        tile.setState(on ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
++        tile.setLabel(getString(R.string.offline_tile_label));
++        tile.setContentDescription(getString(on ? R.string.offline_tile_on
++                : R.string.offline_tile_off));
++        tile.setIcon(Icon.createWithResource(this, R.drawable.ic_offline));
++        tile.updateTile();
++    }
++}
+diff --git a/app/LenosOpsec/src/org/lenos/opsec/ScrubActivity.java b/app/LenosOpsec/src/org/lenos/opsec/ScrubActivity.java
+new file mode 100644
+index 0000000..274cc82
+--- /dev/null
++++ b/app/LenosOpsec/src/org/lenos/opsec/ScrubActivity.java
+@@ -0,0 +1,199 @@
++package org.lenos.opsec;
++
++import android.app.Activity;
++import android.content.ClipData;
++import android.content.ContentValues;
++import android.content.Intent;
++import android.net.Uri;
++import android.os.Bundle;
++import android.os.Environment;
++import android.os.Handler;
++import android.os.Looper;
++import android.provider.MediaStore;
++import android.view.View;
++import android.widget.Button;
++import android.widget.ImageView;
++import android.widget.ProgressBar;
++import android.widget.TextView;
++import android.widget.Toast;
++
++import androidx.core.content.FileProvider;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.IOException;
++import java.io.OutputStream;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++
++/** Share target that removes metadata before handing images to another app. */
++public class ScrubActivity extends Activity {
++    private static final int MAX_IMAGES = 20;
++
++    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
++    private final Handler mMain = new Handler(Looper.getMainLooper());
++    private final ArrayList<Uri> mSources = new ArrayList<>();
++
++    private ImageView mPreview;
++    private TextView mStatus;
++    private ProgressBar mProgress;
++    private Button mShare;
++    private Button mSave;
++    private Button mCancel;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_scrub);
++        mPreview = findViewById(R.id.preview);
++        mStatus = findViewById(R.id.status);
++        mProgress = findViewById(R.id.progress);
++        mShare = findViewById(R.id.share);
++        mSave = findViewById(R.id.save);
++        mCancel = findViewById(R.id.cancel);
++
++        collectSources(getIntent());
++        mCancel.setOnClickListener(v -> finish());
++        if (mSources.isEmpty()) {
++            mStatus.setText(R.string.scrub_nothing);
++            setButtonsEnabled(false);
++        } else if (mSources.size() > MAX_IMAGES) {
++            mStatus.setText(R.string.scrub_too_many);
++            setButtonsEnabled(false);
++        } else {
++            mPreview.setImageURI(mSources.get(0));
++            mShare.setOnClickListener(v -> process(false));
++            mSave.setOnClickListener(v -> process(true));
++            setButtonsEnabled(true);
++        }
++    }
++
++    private void collectSources(Intent intent) {
++        if (intent == null) {
++            return;
++        }
++        if (Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction())) {
++            ArrayList<Uri> uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
++            if (uris != null) {
++                mSources.addAll(uris);
++            }
++        } else {
++            Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
++            if (uri != null) {
++                mSources.add(uri);
++            } else if (intent.getData() != null) {
++                mSources.add(intent.getData());
++            }
++        }
++    }
++
++    private void process(boolean save) {
++        setButtonsEnabled(false);
++        mProgress.setVisibility(View.VISIBLE);
++        mStatus.setText(R.string.scrub_working);
++        mExecutor.execute(() -> {
++            try {
++                final List<ImageScrubber.Result> results = new ArrayList<>();
++                for (Uri source : mSources) {
++                    results.add(ImageScrubber.scrub(this, source));
++                }
++                if (save) {
++                    for (ImageScrubber.Result result : results) {
++                        saveToMediaStore(result);
++                    }
++                }
++                mMain.post(() -> {
++                    mProgress.setVisibility(View.GONE);
++                    if (save) {
++                        mStatus.setText(getString(R.string.scrub_saved, results.size()));
++                        setButtonsEnabled(false);
++                    } else {
++                        mStatus.setText(R.string.scrub_shared);
++                        share(results);
++                    }
++                });
++            } catch (Exception e) {
++                mMain.post(() -> {
++                    mProgress.setVisibility(View.GONE);
++                    setButtonsEnabled(true);
++                    mStatus.setText(R.string.scrub_failed);
++                    Toast.makeText(this, R.string.scrub_failed, Toast.LENGTH_LONG).show();
++                });
++            }
++        });
++    }
++
++    private void share(List<ImageScrubber.Result> results) {
++        final ArrayList<Uri> uris = new ArrayList<>();
++        String type = results.get(0).mimeType;
++        for (ImageScrubber.Result result : results) {
++            uris.add(FileProvider.getUriForFile(this, getPackageName() + ".files", new File(
++                    result.uri.getPath())));
++            if (!type.equals(result.mimeType)) {
++                type = "image/*";
++            }
++        }
++        final Intent intent;
++        if (uris.size() == 1) {
++            intent = new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris.get(0));
++        } else {
++            intent = new Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(
++                    Intent.EXTRA_STREAM, uris);
++        }
++        intent.setType(type);
++        final ClipData clip = ClipData.newRawUri("", uris.get(0));
++        for (int i = 1; i < uris.size(); i++) {
++            clip.addItem(new ClipData.Item(uris.get(i)));
++        }
++        intent.setClipData(clip);
++        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
++        startActivity(Intent.createChooser(intent, getString(R.string.scrub_title)));
++    }
++
++    private void saveToMediaStore(ImageScrubber.Result result) throws IOException {
++        final String extension = result.mimeType.equals("image/png") ? "png"
++                : result.mimeType.equals("image/webp") ? "webp" : "jpg";
++        final ContentValues values = new ContentValues();
++        values.put(MediaStore.Images.Media.DISPLAY_NAME,
++                "lenos-" + System.currentTimeMillis() + "-" + extension);
++        values.put(MediaStore.Images.Media.MIME_TYPE, result.mimeType);
++        values.put(MediaStore.Images.Media.RELATIVE_PATH,
++                Environment.DIRECTORY_PICTURES + "/lenOS");
++        values.put(MediaStore.Images.Media.IS_PENDING, 1);
++        final Uri target = getContentResolver().insert(
++                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values);
++        if (target == null) {
++            throw new IOException("unable to create MediaStore entry");
++        }
++        try (FileInputStream in = new FileInputStream(result.uri.getPath());
++             OutputStream out = getContentResolver().openOutputStream(target)) {
++            if (out == null) {
++                throw new IOException("unable to open MediaStore entry");
++            }
++            final byte[] buffer = new byte[16 * 1024];
++            int read;
++            while ((read = in.read(buffer)) != -1) {
++                out.write(buffer, 0, read);
++            }
++        } catch (IOException e) {
++            getContentResolver().delete(target, null, null);
++            throw e;
++        }
++        values.clear();
++        values.put(MediaStore.Images.Media.IS_PENDING, 0);
++        getContentResolver().update(target, values, null, null);
++    }
++
++    private void setButtonsEnabled(boolean enabled) {
++        mShare.setEnabled(enabled);
++        mSave.setEnabled(enabled);
++    }
++
++    @Override
++    protected void onDestroy() {
++        super.onDestroy();
++        mExecutor.shutdownNow();
++    }
++}
+diff --git a/config/lenos.mk b/config/lenos.mk
+index de66e8c..544b0fb 100644
+--- a/config/lenos.mk
++++ b/config/lenos.mk
+@@ -12,6 +12,12 @@
+ PRODUCT_PACKAGES += \
+     LenosSecurity
+ 
++# Experimental OPSEC tools (metadata scrubber share target + offline tile).
++# Present only when the lenos-experimental series is applied; the 1.0 product
++# does not inherit these tools.
++PRODUCT_PACKAGES += \
++    LenosOpsec
++
+ # Privacy overlays (enabled at boot, no user interaction required):
+ # * LenosFrameworksOverlay        - non-Google NTP fallback pool (framework-res)
+ # * LenosNetworkStackOverlay      - Cloudflare connectivity-check probes

@@ -8,9 +8,19 @@ does **not** mean the code compiles, boots, or behaves correctly on a device.
 
 | ID | Feature | Patch | Why it cannot be tested yet |
 |---|---|---|---|
+| #17 | On-device crash/ANR log viewer | `packages_apps_Settings/0001` | Needs a Settings build, DropBox entries on a booted device, and confirmation that the Settings UID can read the tags |
 | #20 | fs-verity enforcement for system-app updates | `frameworks_base/0001` | Needs a full system image and a booted device to exercise `scanPackageForInitLI` and the PackageInstaller path |
 | #21 | Reject same/older system-app updates at boot | `frameworks_base/0001` | Same; the failure mode only appears across a reboot with a `/data` update |
-| #25 | Screenshot sound follows `SOUND_EFFECTS_ENABLED`; forced shutter regions unchanged | `frameworks_base/0002` | Needs SystemUI build and a device with/without a forced-shutter region |
+| #22 | USB-C data-line control (charging-only / when-locked / AFU) | `frameworks_base/0003` + `packages_apps_Settings/0002` | Needs the `asteroids` USB HAL to implement the AOSP `enableUsbData` operation, a keyguard transition, and a physical USB host/cable |
+| #25 | Screenshot sound follows `SOUND_EFFECTS_ENABLED`; forced shutter regions unchanged | `frameworks_base/0002` | Needs a SystemUI build and a device with/without a forced-shutter region |
+| #27 | Seedvault GrapheneOS app-id prefix + chunker | `packages_apps_Seedvault/0001` | Needs a full Seedvault build and a backup/restore cycle, including migration from a pre-prefix backup |
+| #28 | Setup Wizard unlocked-bootloader warning | `packages_apps_SetupWizard/0001` | Needs a Setup Wizard build and first-boot states with a green and non-green verified-boot property |
+| OPS-1 | Metadata-scrubbing image share target | `vendor_lenos/0001` | Needs an app build and a real share flow; verify metadata removal with an external parser |
+| OPS-2 | One-tap Offline radio tile | `vendor_lenos/0001` | Needs a system app build and airplane-mode/Wi-Fi/Bluetooth behavior on `asteroids` |
+| OPS-3 | Clear clipboard on screen off | `frameworks_base/0004` + `packages_apps_Settings/0003` | Needs a framework build and a screen-off cycle with text, image and URI clips |
+
+Patch count: 10 (4 frameworks/base, 3 Settings, 1 SetupWizard, 1 Seedvault, 1 vendor/lenos).
+Static tests: 55.
 
 ## Still to implement (in rough order)
 
@@ -19,16 +29,42 @@ blocker rather than pretending the work is a small patch.
 
 | ID | Feature | Blocker / prerequisite | Size |
 |---|---|---|---|
-| #22 | USB-C port control (data off / charging-only / when-locked) | Needs `UsbManager` API, `UsbService` port-security enforcement, keyguard hooks, HAL support and a per-device capability flag; the `asteroids` USB HAL has not been validated | L |
-| #23 | Native debugging (ptrace) block with per-app toggles | Depends on the `GosPackageState` / SELinux-flags core; a standalone block would not provide the per-app UI and would diverge from GrapheneOS | L |
-| #27 | Seedvault backup update | Needs an app fork/update and a decision on vendoring the GrapheneOS chunker; not a framework patch | M–L |
-| #28 | Setup Wizard bootloader/unlocked-device warning | Needs a product spec (when to show, exact wording, links, whether to block); the LineageOS SetupWizard checkout is not in the workspace | M |
-| #30 | Storage Scopes / Contact Scopes | XL port of the 64-file `GosPackageState` PackageManager core plus Settings/UI; cannot be done safely without a build loop | XL |
-| #31 | Two-factor fingerprint unlock (`LockDomain`) | XL backport (tens of files) with lock-screen and credential logic; needs a build/device loop | XL |
-| #33 | Runtime/allocator hardening | bionic/ART changes, not a small patch; needs performance and compatibility validation | XL |
-| #34 | SELinux/seccomp tightening | Device-specific sepolicy; must be validated with `neverallow` and a boot loop before shipping | XL |
-| #35 | Browser/WebView replacement | Product decision (Vanadium vs Cromite vs Jelly) and an update channel; not a source-only framework patch | decision |
+| #23 | Native debugging (ptrace) block with per-app toggles | Depends on the GrapheneOS `GosPackageState` / SELinux-flags core and a matching sepolicy; a standalone block would not provide the per-app UI and would diverge from GrapheneOS | L |
+| #30 | Storage Scopes / Contact Scopes | XL port of the 64-file `GosPackageState` PackageManager core plus Settings/Permission UI; cannot be done safely without a build loop | XL |
+| #31 | Two-factor fingerprint unlock (`LockDomain`) | XL backport (tens of files) with lock-screen and credential logic; needs a build/device loop and synthetic-password upgrade tests | XL |
+| #33 | Runtime/allocator hardening (hardened_malloc, MTE/BTI, exec spawning, JIT policy) | bionic/ART/build changes, not a small patch; needs performance and app-compatibility validation on the target | XL |
+| #34 | SELinux/seccomp tightening | Device-specific sepolicy; must be validated with `neverallow`, a boot loop, and app compatibility before shipping | XL |
+| #35 | Browser/WebView replacement | Product decision (Vanadium vs Cromite vs Jelly) and an update channel; not a source-only framework patch. The current experimental batch does not choose a browser | decision |
 
-Tier 2 #17 (log viewer/crash reporting) remains deferred pending a usable GrapheneOS UI app;
-Tier 2 #26 (call recording), #24 (uncompressed APEX), #29 (always-on VPN), and the rest of the
-1.0 series stay in the main patch repository.
+### Deliberately not in this batch
+
+* **#30/#31** are not “partially” implemented. A Storage Scope or contact picker without the
+  PackageManager state core would be security theatre; a second-factor lock screen without the
+  credential-domain storage would risk locking users out.
+* **#33/#34** are program-level workstreams. The portability-safe kernel subset is already in the
+  main 1.0 series (#32); the remaining allocator/SELinux work cannot be validated without a build
+  and boot loop.
+* **#35** needs a product/browser decision. No prebuilt browser is silently added here.
+* **#23** needs the GOS package-state core. The current AppOps/SELinux surface cannot express the
+  per-app “block native debugging” policy faithfully.
+
+## What the OPSEC additions deliberately do not do
+
+* They do not upload anything. `LenosOpsec` has no `INTERNET` permission and no network code.
+* They do not auto-enable themselves. OPS-3 is off by default; the Offline tile must be added by
+  the user; the metadata scrubber only runs when the user shares an image with it.
+* They do not claim a cryptographic wipe. Re-encoding removes metadata from the output file, and
+  clipboard clearing removes the system clipboard and its URI grants; source files, thumbnails,
+  app histories, IMEs and autofill storage are out of scope.
+* They do not change verified boot, encryption, SELinux enforcement, emergency calling or recovery.
+
+## Promotion rule
+
+A row moves to the main `lenos-1.0` series only after:
+
+1. the experimental patch applies to the pinned tree;
+2. the full `asteroids` build succeeds with the main 1.0 series;
+3. the feature’s `docs/verification.md` checks pass on a booted device;
+4. there is an explicit product decision to include it.
+
+Until then this repository is a staging area, not a claim of shipped behavior.
