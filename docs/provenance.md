@@ -35,7 +35,7 @@ upstream files are:
 |---|---|
 | `packages_apps_Settings/0001-crash-log-viewer.patch` | GrapheneOS's crash-reporting stack is a 17-file system-server service with a different UI and upload flow. This is a smaller, local-only DropBox reader with explicit sharing. |
 | `packages_apps_SetupWizard/0001-bootloader-unlocked-warning.patch` | GrapheneOS's SetupWizard fork has no bootloader/unlocked warning; the feature was specified for lenOS and implemented against the LineageOS 23.2 wizard. |
-| `vendor_lenos/0001-opsec-tools.patch` (`LenosOpsec`) | Original lenOS OPSEC tools: a metadata-scrubbing share target and an Offline Quick Settings tile. |
+| `vendor_lenos/0001-opsec-tools.patch` (`LenosOpsec`) | Original lenOS OPSEC tools: a metadata-scrubbing image share target, an Offline Quick Settings tile, and a tracking-parameter scrubber for shared text. |
 | `frameworks_base/0004-clipboard-clear-on-screen-off.patch` + `packages_apps_Settings/0003-clipboard-privacy.patch` | Original lenOS OPSEC control. AOSP has a DeviceConfig auto-clear timer, not a screen-off wipe and not a user-facing setting. |
 | `packages_apps_Settings/0004-clipboard-app-access.patch` | Original lenOS Settings UI over AOSP's existing `OP_READ_CLIPBOARD` AppOp. It does not port GrapheneOS's `GosPackageState` per-app state or its denial notification/toolbar path. |
 
@@ -160,6 +160,12 @@ upstream files are:
   excluded to avoid breaking keyboard paste; shared-UID apps are shown with a warning because the
   AppOp applies to the package, not an isolated process. The global Secure Paste setting remains
   authoritative.
+
+### OPS-5 — tracking-parameter scrubber
+
+* Original lenOS work. The URL matcher and parameter list are local and intentionally conservative;
+  the app never resolves a shortener, fetches a page or checks a blocklist. It preserves functional
+  query parameters and fragments, so it is not a complete URL anonymizer. No GrapheneOS code is used.
 
 ## License
 

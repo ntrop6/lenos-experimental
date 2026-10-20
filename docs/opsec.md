@@ -114,6 +114,32 @@ simple preference list (no search provider) and is not a cryptographic capabilit
 with a root compromise or a system service can still read what the system exposes. It does not
 stop an app from writing to the clipboard.
 
+## OPS-5 — tracking-parameter scrubber for shared text
+
+**Problem.** Sharing a link often shares the sender's campaign source, ad click ID, referrer and
+other tracking parameters. The receiving app can correlate the share with an advertising profile
+even when the URL itself looks ordinary.
+
+**Implementation.** `ScrubTextActivity` registers a `text/plain` share target in `LenosOpsec`. It
+extracts `http`/`https` URLs with a local regex, removes known tracking parameters while preserving
+the path, non-tracking query parameters and fragment, and lets the user inspect the result before
+sharing or copying it. The parameter list is conservative: `utm_*`, `pk_*`, `mtm_*`, `hsa_*`,
+`vero_*`, `oly_*`, `fbclid`, `gclid`, `dclid`, `msclkid`, `yclid`, `twclid`, `igshid`, `mc_cid`,
+`mc_eid`, `_ga`, `_gl`, `gclsrc`, `srsltid`, `gad_source`, `wbraid`, `gbraid`, `mkt_tok`,
+`elqTrackId`, `elqTrack`, `sc_cid`, `si`, and referrer fields. Links are never opened, resolved or
+sent to a service.
+
+**Limits.** This is not a URL safety scanner. It does not detect phishing, shortened-link targets,
+tracking encoded in path segments or fragments, or unique identifiers in the remaining functional
+parameters. It preserves parameters such as `source` and search queries because they may be needed
+for the link to work. A site can still fingerprint the browser after the link is opened. The user
+must review the cleaned text before sharing.
+
+**Verification.** Share a URL containing `utm_source`, `fbclid`, `gclid`, a functional `id` and a
+fragment; confirm only the tracking parameters are removed and the function/fragment survive.
+Repeat with multiple URLs and plain text without links. Confirm the app has no network permission
+and that “Copy cleaned text” produces the same string.
+
 ## Future OPSEC backlog (not implemented)
 
 | Idea | Why it is not in this batch |

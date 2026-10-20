@@ -77,7 +77,9 @@ class TestOpsecTools(LenosPatchTest):
         for rel in (
                 "app/LenosOpsec/src/org/lenos/opsec/ImageScrubber.java",
                 "app/LenosOpsec/src/org/lenos/opsec/ScrubActivity.java",
-                "app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java"):
+                "app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java",
+                "app/LenosOpsec/src/org/lenos/opsec/LinkScrubber.java",
+                "app/LenosOpsec/src/org/lenos/opsec/ScrubTextActivity.java"):
             body = self.text(rel)
             self.assertNotIn("java.net.", body, rel)
             self.assertNotIn("HttpURLConnection", body, rel)
@@ -119,7 +121,9 @@ class TestOpsecTools(LenosPatchTest):
         for rel in (
                 "app/LenosOpsec/src/org/lenos/opsec/ImageScrubber.java",
                 "app/LenosOpsec/src/org/lenos/opsec/ScrubActivity.java",
-                "app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java"):
+                "app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java",
+                "app/LenosOpsec/src/org/lenos/opsec/LinkScrubber.java",
+                "app/LenosOpsec/src/org/lenos/opsec/ScrubTextActivity.java"):
             self.assert_java_syntax(rel)
 
 

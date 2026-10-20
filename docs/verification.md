@@ -176,6 +176,17 @@ This is the highest-risk item in the batch because it depends on a vendor HAL. T
 6. Confirm the screen does not crash when the package list is empty or when an app is uninstalled
    while the list is loading.
 
+## OPS-5 — tracking-parameter scrubber
+
+1. Share text containing a URL with `utm_source`, `fbclid`, `gclid`, a functional `id` parameter
+   and a fragment to “lenOS OPSEC”; choose “Remove tracking parameters”.
+2. Confirm only the known tracking fields are gone, the `id` parameter and fragment remain, and
+   the app does not open the link.
+3. Share multiple URLs and plain text with no links; confirm only the URLs are changed.
+4. Use “Copy cleaned text” and compare it with the preview. Confirm the app has no network code and
+   that a malformed URL is left untouched rather than crashing.
+5. Check a shortened link: the scrubber must not resolve it and the UI must not imply it is safe.
+
 ## Rollback
 
 If the build fails or the device misbehaves, use `lenos-patch.py --reset` on the source tree and

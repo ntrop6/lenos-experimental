@@ -20,10 +20,10 @@ index 0000000..acc7144
 +}
 diff --git a/app/LenosOpsec/AndroidManifest.xml b/app/LenosOpsec/AndroidManifest.xml
 new file mode 100644
-index 0000000..4263964
+index 0000000..d01a6e4
 --- /dev/null
 +++ b/app/LenosOpsec/AndroidManifest.xml
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,75 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 +    package="org.lenos.opsec"
@@ -62,6 +62,18 @@ index 0000000..4263964
 +                <action android:name="android.intent.action.SEND_MULTIPLE" />
 +                <category android:name="android.intent.category.DEFAULT" />
 +                <data android:mimeType="image/*" />
++            </intent-filter>
++        </activity>
++
++        <activity
++            android:name=".ScrubTextActivity"
++            android:exported="true"
++            android:label="@string/scrub_text_title"
++            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
++            <intent-filter>
++                <action android:name="android.intent.action.SEND" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <data android:mimeType="text/plain" />
 +            </intent-filter>
 +        </activity>
 +
@@ -180,12 +192,90 @@ index 0000000..094c817
 +            android:text="@string/scrub_cancel" />
 +    </LinearLayout>
 +</ScrollView>
+diff --git a/app/LenosOpsec/res/layout/activity_scrub_text.xml b/app/LenosOpsec/res/layout/activity_scrub_text.xml
+new file mode 100644
+index 0000000..0374053
+--- /dev/null
++++ b/app/LenosOpsec/res/layout/activity_scrub_text.xml
+@@ -0,0 +1,72 @@
++<?xml version="1.0" encoding="utf-8"?>
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:fillViewport="true">
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="24dp">
++
++        <TextView
++            android:id="@+id/title"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:text="@string/scrub_text_title"
++            android:textAppearance="?android:attr/textAppearanceLarge"
++            android:textStyle="bold" />
++
++        <TextView
++            android:id="@+id/explanation"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:text="@string/scrub_text_explanation" />
++
++        <EditText
++            android:id="@+id/text"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="20dp"
++            android:gravity="top|start"
++            android:inputType="textMultiLine|textUri"
++            android:minLines="6"
++            android:scrollbars="vertical" />
++
++        <TextView
++            android:id="@+id/status"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="12dp"
++            android:textColor="?android:attr/textColorSecondary" />
++
++        <Button
++            android:id="@+id/remove"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="20dp"
++            android:text="@string/scrub_text_remove" />
++
++        <Button
++            android:id="@+id/share"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/scrub_text_share" />
++
++        <Button
++            android:id="@+id/copy"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/scrub_text_copy" />
++
++        <Button
++            android:id="@+id/cancel"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:text="@string/scrub_text_cancel" />
++    </LinearLayout>
++</ScrollView>
 diff --git a/app/LenosOpsec/res/values/strings.xml b/app/LenosOpsec/res/values/strings.xml
 new file mode 100644
-index 0000000..2cea642
+index 0000000..7eeafd8
 --- /dev/null
 +++ b/app/LenosOpsec/res/values/strings.xml
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,32 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<resources>
 +    <string name="app_name">lenOS OPSEC</string>
@@ -204,6 +294,19 @@ index 0000000..2cea642
 +    <string name="offline_tile_label">Offline</string>
 +    <string name="offline_tile_on">Radios off</string>
 +    <string name="offline_tile_off">Radios on</string>
++
++    <!-- OPS-5: tracking-parameter scrubber for shared text -->
++    <string name="scrub_text_title">Remove tracking from text</string>
++    <string name="scrub_text_explanation">Strips known tracking parameters from links in shared text. The links are not opened and nothing is sent off the device.</string>
++    <string name="scrub_text_remove">Remove tracking parameters</string>
++    <string name="scrub_text_share">Share cleaned text</string>
++    <string name="scrub_text_copy">Copy cleaned text</string>
++    <string name="scrub_text_cancel">Cancel</string>
++    <string name="scrub_text_nothing">No text was provided.</string>
++    <string name="scrub_text_removed">Removed %1$d tracking parameter(s).</string>
++    <string name="scrub_text_clean">No known tracking parameters found.</string>
++    <string name="scrub_text_copied">Cleaned text copied.</string>
++    <string name="scrub_text_clip_label">lenOS cleaned text</string>
 +</resources>
 diff --git a/app/LenosOpsec/res/xml/file_paths.xml b/app/LenosOpsec/res/xml/file_paths.xml
 new file mode 100644
@@ -317,6 +420,114 @@ index 0000000..0e028de
 +        }
 +
 +        return new Result(Uri.fromFile(output), outputType, width, height);
++    }
++}
+diff --git a/app/LenosOpsec/src/org/lenos/opsec/LinkScrubber.java b/app/LenosOpsec/src/org/lenos/opsec/LinkScrubber.java
+new file mode 100644
+index 0000000..481c02a
+--- /dev/null
++++ b/app/LenosOpsec/src/org/lenos/opsec/LinkScrubber.java
+@@ -0,0 +1,102 @@
++package org.lenos.opsec;
++
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.Set;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++/** Removes common link-tracking parameters without opening or resolving the links. */
++final class LinkScrubber {
++    private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s<>\"']+");
++
++    private static final Set<String> TRACKING_PARAMETERS = new HashSet<>(Arrays.asList(
++            "fbclid", "gclid", "dclid", "msclkid", "yclid", "twclid", "igshid",
++            "mc_cid", "mc_eid", "_ga", "_gl", "gclsrc", "srsltid", "gad_source",
++            "wbraid", "gbraid", "mkt_tok", "elqtrackid", "elqtrack", "sc_cid",
++            "si", "ref", "ref_src", "ref_url"));
++
++    private LinkScrubber() {
++    }
++
++    static final class Result {
++        final String text;
++        final int removed;
++
++        Result(String text, int removed) {
++            this.text = text;
++            this.removed = removed;
++        }
++    }
++
++    static Result scrub(String input) {
++        if (input == null || input.isEmpty()) {
++            return new Result(input == null ? "" : input, 0);
++        }
++        final Matcher matcher = URL_PATTERN.matcher(input);
++        final StringBuilder output = new StringBuilder(input.length());
++        int last = 0;
++        int removed = 0;
++        while (matcher.find()) {
++            output.append(input, last, matcher.start());
++            final CleanedUrl cleaned = clean(matcher.group());
++            output.append(cleaned.url);
++            removed += cleaned.removed;
++            last = matcher.end();
++        }
++        output.append(input, last, input.length());
++        return new Result(output.toString(), removed);
++    }
++
++    private static CleanedUrl clean(String url) {
++        final int hash = url.indexOf('#');
++        final String fragment = hash >= 0 ? url.substring(hash) : "";
++        final String withoutFragment = hash >= 0 ? url.substring(0, hash) : url;
++        final int queryStart = withoutFragment.indexOf('?');
++        if (queryStart < 0) {
++            return new CleanedUrl(url, 0);
++        }
++
++        final String prefix = withoutFragment.substring(0, queryStart);
++        final String query = withoutFragment.substring(queryStart + 1);
++        final StringBuilder kept = new StringBuilder();
++        int removed = 0;
++        for (String part : query.split("&", -1)) {
++            final int equals = part.indexOf('=');
++            final String name = (equals >= 0 ? part.substring(0, equals) : part)
++                    .toLowerCase(java.util.Locale.ROOT);
++            if (isTracking(name)) {
++                removed++;
++                continue;
++            }
++            if (kept.length() > 0) {
++                kept.append('&');
++            }
++            kept.append(part);
++        }
++        if (removed == 0) {
++            return new CleanedUrl(url, 0);
++        }
++        final String cleaned = kept.length() == 0 ? prefix : prefix + "?" + kept;
++        return new CleanedUrl(cleaned + fragment, removed);
++    }
++
++    private static boolean isTracking(String name) {
++        if (name.startsWith("utm_") || name.startsWith("pk_") || name.startsWith("mtm_")
++                || name.startsWith("hsa_") || name.startsWith("vero_")
++                || name.startsWith("oly_")) {
++            return true;
++        }
++        return TRACKING_PARAMETERS.contains(name);
++    }
++
++    private static final class CleanedUrl {
++        final String url;
++        final int removed;
++
++        CleanedUrl(String url, int removed) {
++            this.url = url;
++            this.removed = removed;
++        }
 +    }
 +}
 diff --git a/app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java b/app/LenosOpsec/src/org/lenos/opsec/OfflineTileService.java
@@ -614,6 +825,102 @@ index 0000000..274cc82
 +    protected void onDestroy() {
 +        super.onDestroy();
 +        mExecutor.shutdownNow();
++    }
++}
+diff --git a/app/LenosOpsec/src/org/lenos/opsec/ScrubTextActivity.java b/app/LenosOpsec/src/org/lenos/opsec/ScrubTextActivity.java
+new file mode 100644
+index 0000000..858ad42
+--- /dev/null
++++ b/app/LenosOpsec/src/org/lenos/opsec/ScrubTextActivity.java
+@@ -0,0 +1,90 @@
++package org.lenos.opsec;
++
++import android.app.Activity;
++import android.content.ClipData;
++import android.content.ClipboardManager;
++import android.content.Intent;
++import android.os.Bundle;
++import android.widget.Button;
++import android.widget.EditText;
++import android.widget.TextView;
++import android.widget.Toast;
++
++/** Share target that strips known tracking parameters from links in shared text. */
++public class ScrubTextActivity extends Activity {
++    private EditText mText;
++    private TextView mStatus;
++    private Button mRemove;
++    private Button mShare;
++    private Button mCopy;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_scrub_text);
++        mText = findViewById(R.id.text);
++        mStatus = findViewById(R.id.status);
++        mRemove = findViewById(R.id.remove);
++        mShare = findViewById(R.id.share);
++        mCopy = findViewById(R.id.copy);
++
++        final Intent intent = getIntent();
++        CharSequence shared = intent == null ? null : intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
++        if (shared == null && intent != null) {
++            shared = intent.getStringExtra(Intent.EXTRA_TEXT);
++        }
++        final String text = shared == null ? "" : shared.toString();
++
++        findViewById(R.id.cancel).setOnClickListener(v -> finish());
++        mRemove.setOnClickListener(v -> applyScrub(false));
++        mShare.setOnClickListener(v -> applyScrub(true));
++        mCopy.setOnClickListener(v -> copyCleaned());
++
++        if (text.isEmpty()) {
++            mStatus.setText(R.string.scrub_text_nothing);
++            setButtonsEnabled(false);
++        } else {
++            mText.setText(text);
++            mText.setSelection(0);
++            setButtonsEnabled(true);
++        }
++    }
++
++    private void applyScrub(boolean share) {
++        final LinkScrubber.Result result = LinkScrubber.scrub(mText.getText().toString());
++        mText.setText(result.text);
++        mText.setSelection(0);
++        if (result.removed == 0) {
++            mStatus.setText(R.string.scrub_text_clean);
++        } else {
++            mStatus.setText(getString(R.string.scrub_text_removed, result.removed));
++        }
++        if (share) {
++            share(result.text);
++        }
++    }
++
++    private void copyCleaned() {
++        final LinkScrubber.Result result = LinkScrubber.scrub(mText.getText().toString());
++        mText.setText(result.text);
++        final ClipboardManager clipboard = getSystemService(ClipboardManager.class);
++        if (clipboard != null) {
++            clipboard.setPrimaryClip(ClipData.newPlainText(
++                    getString(R.string.scrub_text_clip_label), result.text));
++            Toast.makeText(this, R.string.scrub_text_copied, Toast.LENGTH_SHORT).show();
++        }
++    }
++
++    private void share(String text) {
++        final Intent share = new Intent(Intent.ACTION_SEND);
++        share.setType("text/plain");
++        share.putExtra(Intent.EXTRA_TEXT, text);
++        startActivity(Intent.createChooser(share, getString(R.string.scrub_text_title)));
++    }
++
++    private void setButtonsEnabled(boolean enabled) {
++        mRemove.setEnabled(enabled);
++        mShare.setEnabled(enabled);
++        mCopy.setEnabled(enabled);
 +    }
 +}
 diff --git a/config/lenos.mk b/config/lenos.mk
