@@ -15,14 +15,15 @@ does **not** mean the code compiles, boots, or behaves correctly on a device.
 | #25 | Screenshot sound follows `SOUND_EFFECTS_ENABLED`; forced shutter regions unchanged | `frameworks_base/0002` | Needs a SystemUI build and a device with/without a forced-shutter region |
 | #27 | Seedvault GrapheneOS app-id prefix + chunker | `packages_apps_Seedvault/0001` | Needs a full Seedvault build and a backup/restore cycle, including migration from a pre-prefix backup |
 | #28 | Setup Wizard unlocked-bootloader warning | `packages_apps_SetupWizard/0001` | Needs a Setup Wizard build and first-boot states with a green and non-green verified-boot property |
+| #23 partial / ENF-1 | Global opt-in native-debugging block | `frameworks_base/0005` + `packages_apps_Settings/0005` | Needs a framework build, a booted device and a same-UID ptrace test; per-app `GosPackageState`/SELinux policy is still absent |
 | OPS-1 | Metadata-scrubbing image share target | `vendor_lenos/0001` | Needs an app build and a real share flow; verify metadata removal with an external parser |
 | OPS-2 | One-tap Offline radio tile | `vendor_lenos/0001` | Needs a system app build and airplane-mode/Wi-Fi/Bluetooth behavior on `asteroids` |
 | OPS-3 | Clear clipboard on screen off | `frameworks_base/0004` + `packages_apps_Settings/0003` | Needs a framework build and a screen-off cycle with text, image and URI clips |
 | OPS-4 / #8 stage 2 | Per-app clipboard read control | `packages_apps_Settings/0004` | Needs a Settings build and an app-op read test; the UI is source-complete and uses the existing AppOps policy |
 | OPS-5 | Tracking-parameter scrubber for shared text | `vendor_lenos/0001` (`app/LenosOpsec`) | Needs an app build and a real text-share flow; verify the link set with a local parser and no network |
 
-Patch count: 11 (4 frameworks/base, 4 Settings, 1 SetupWizard, 1 Seedvault, 1 vendor/lenos).
-Static tests: 65.
+Patch count: 13 (5 frameworks/base, 5 Settings, 1 SetupWizard, 1 Seedvault, 1 vendor/lenos).
+Static tests: 76.
 
 ## Still to implement (in rough order)
 
@@ -31,7 +32,7 @@ blocker rather than pretending the work is a small patch.
 
 | ID | Feature | Blocker / prerequisite | Size |
 |---|---|---|---|
-| #23 | Native debugging (ptrace) block with per-app toggles | Depends on the GrapheneOS `GosPackageState` / SELinux-flags core and a matching sepolicy; a standalone block would not provide the per-app UI and would diverge from GrapheneOS | L |
+| #23 | **Full** native debugging (ptrace) block with per-app toggles | ENF-1 provides the global kernel-dumpable primitive, but the per-app `GosPackageState` / SELinux-flags core, denial notification and sepolicy are still absent | L |
 | #30 | Storage Scopes / Contact Scopes | XL port of the 64-file `GosPackageState` PackageManager core plus Settings/Permission UI; cannot be done safely without a build loop | XL |
 | #31 | Two-factor fingerprint unlock (`LockDomain`) | XL backport (tens of files) with lock-screen and credential logic; needs a build/device loop and synthetic-password upgrade tests | XL |
 | #33 | Runtime/allocator hardening (hardened_malloc, MTE/BTI, exec spawning, JIT policy) | bionic/ART/build changes, not a small patch; needs performance and app-compatibility validation on the target | XL |
@@ -47,8 +48,9 @@ blocker rather than pretending the work is a small patch.
   main 1.0 series (#32); the remaining allocator/SELinux work cannot be validated without a build
   and boot loop.
 * **#35** needs a product/browser decision. No prebuilt browser is silently added here.
-* **#23** needs the GOS package-state core. The current AppOps/SELinux surface cannot express the
-  per-app “block native debugging” policy faithfully.
+* **#23** is represented by ENF-1 only as a global opt-in primitive. The GOS package-state core is
+  still needed for per-app toggles, denial UI and the SELinux package-domain policy; ENF-1 is not
+  described as the complete feature.
 
 ## What the OPSEC additions deliberately do not do
 

@@ -8,8 +8,8 @@ diff against the commit below. Original lenOS work is marked as such.
 
 | Project | Revision | Used by |
 |---|---|---|
-| `frameworks/base` | `958afcc3d647d57571650cee4172afe0da619171` (`lineage-23.2`, 2026-10-15) | #20/#21, #22, #25, OPS-3 |
-| `packages/apps/Settings` | `72494c35b673f1b531e1218160e1e514976f6a1e` | #17, #22, OPS-3 |
+| `frameworks/base` | `958afcc3d647d57571650cee4172afe0da619171` (`lineage-23.2`, 2026-10-15) | #20/#21, #22, #23 partial, #25, OPS-3 |
+| `packages/apps/Settings` | `72494c35b673f1b531e1218160e1e514976f6a1e` | #17, #22, #23 partial, OPS-3, OPS-4 |
 | `packages/apps/SetupWizard` | `715b772f07c52ce0fdb83b9891765f3de992ffb5` | #28 |
 | `packages/apps/Seedvault` | `29301617a99030c3ae0e14de64eadbc73bd2bd63` | #27 |
 | `vendor/lenos` | `a4c7f669ce181242624dc4f2ca1883e8abca2300` | OPS-1 / OPS-2 product integration |
@@ -38,6 +38,7 @@ upstream files are:
 | `vendor_lenos/0001-opsec-tools.patch` (`LenosOpsec`) | Original lenOS OPSEC tools: a metadata-scrubbing image share target, an Offline Quick Settings tile, and a tracking-parameter scrubber for shared text. |
 | `frameworks_base/0004-clipboard-clear-on-screen-off.patch` + `packages_apps_Settings/0003-clipboard-privacy.patch` | Original lenOS OPSEC control. AOSP has a DeviceConfig auto-clear timer, not a screen-off wipe and not a user-facing setting. |
 | `packages_apps_Settings/0004-clipboard-app-access.patch` | Original lenOS Settings UI over AOSP's existing `OP_READ_CLIPBOARD` AppOp. It does not port GrapheneOS's `GosPackageState` per-app state or its denial notification/toolbar path. |
+| `frameworks_base/0005-native-debugging-block.patch` + `packages_apps_Settings/0005-native-debugging-block.patch` | Original lenOS global approximation of GrapheneOS's native-debugging control. It uses `prctl(PR_SET_DUMPABLE, 0)` for newly bound user app processes; the GOS per-app `GosPackageState`, SELinux package domains, denial notification and per-app UI are not ported. |
 
 ## Deliberate deviations
 
@@ -123,6 +124,17 @@ upstream files are:
   `ro.boot.verifiedbootstate` property, and is conditional on a non-green state. It does not block
   setup, does not ask the user to re-lock, and points out that re-locking an unsigned build can
   brick it.
+
+### ENF-1 / #23 partial — native-debugging block
+
+* Original lenOS implementation. GrapheneOS enforces `BLOCK_NATIVE_DEBUGGING` per package through
+  `GosPackageState` and SELinux package domains, with per-app toggles and a denial notification.
+  lenOS instead adds one global secure setting, one `prctl(PR_SET_DUMPABLE, 0)` native helper and
+  an ActivityThread hook. It exempts system, debuggable and profileable apps, and it does not
+  block root or any caller with `CAP_SYS_PTRACE`.
+* It is intentionally not described as a full #23 port. Running processes are not changed, and
+  there is no per-app state, denial UI or SELinux integration. It is an experimental primitive that
+  must be boot-tested and reviewed before it could be promoted.
 
 ### OPS-1 — metadata scrubber
 

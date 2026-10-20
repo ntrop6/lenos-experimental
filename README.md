@@ -32,6 +32,7 @@ window. Every patch is still a strict `git apply` diff against the same pinned t
 | **#22** USB-C data-line control (charging-only / when-locked / AFU) | `frameworks_base/0003-usb-port-security.patch` + `packages_apps_Settings/0002-usb-port-security.patch` | Implemented against the AOSP per-port HAL; **HAL support on `asteroids` unverified** |
 | **#17** on-device crash/ANR log viewer | `packages_apps_Settings/0001-crash-log-viewer.patch` | Implemented; local-only; **not built** |
 | **#28** Setup Wizard unlocked-bootloader warning | `packages_apps_SetupWizard/0001-bootloader-unlocked-warning.patch` | Implemented; **not built** |
+| **#23 partial / ENF-1** global opt-in native-debugging block | `frameworks_base/0005-native-debugging-block.patch` + `packages_apps_Settings/0005-native-debugging-block.patch` | Implemented source-only; **not per-app** and **not built** |
 | **#27** Seedvault/GrapheneOS app-id isolation | `packages_apps_Seedvault/0001-grapheneos-app-id-prefix.patch` | Implemented prefix port + GrapheneOS chunker; **restore compatibility unverified** |
 | **OPS-1** metadata-scrubbing share target | `vendor_lenos/0001-opsec-tools.patch` (`app/LenosOpsec`) | Implemented; re-encodes images; **not built** |
 | **OPS-2** one-tap Offline radio tile | same patch | Implemented; **not built** |
@@ -74,6 +75,12 @@ metadata sanitizer, offline tile, or screen-off clipboard wipe.
 * **#28 is a warning, not a lock.** It appears on the Setup Wizard welcome page when
   `ro.boot.verifiedbootstate` is not `green`; it does not block setup and does not encourage
   re-locking an unsigned build.
+* **ENF-1 is only a global approximation of #23.** It is not GrapheneOS's per-app native-debugging
+  policy: it has no `GosPackageState` state, no per-app allow/deny UI, no SELinux package domain and
+  no denial notification. When enabled, newly started non-system, non-debuggable, non-profileable
+  app processes clear their dumpable bit; existing processes and system apps are unchanged. Root
+  or any process with `CAP_SYS_PTRACE` (including the crash dumper) is not blocked. The setting is
+  off by default and must be built and boot-tested before it can be trusted.
 * **OPSEC tools are not cryptographic wipes.** Image re-encoding removes metadata from the output,
   but the source app, thumbnails and filesystem caches may retain the original. The Offline tile
   turns off airplane-mode radios but cannot prove the baseband is powered down; it does not cover
@@ -115,6 +122,20 @@ $PY tools/lenos-patch.py --tree "$WS" --reset
 the USB controller, the `LenosOpsec` app tree, etc.). The main repository's driver does not know
 about this repository; do not merge the two series blindly.
 
+Two read-only helpers are included for the first build window:
+
+```bash
+# post-build artifact presence (requires an OUT directory)
+OUT=/path/to/out/target/product/asteroids tools/verify-build.sh
+
+# read-only device properties/settings/package checks over adb
+ANDROID_SERIAL=... tools/verify-device.sh
+```
+
+Neither script builds, flashes, wipes, relocks, reboots or writes a setting. Behavioral checks that
+require a cable, a lock transition, a ptrace attempt or a reboot remain manual and are listed in
+`docs/verification.md`.
+
 The `vendor_lenos` patch applies to the main `vendor/lenos` checkout and adds the experimental
 `LenosOpsec` package to `config/lenos.mk`. It is intentionally a separate patch from the main
 product config; only an experimental build should include it.
@@ -144,7 +165,9 @@ The suite proves:
   than copying EXIF, the Offline tile cuts airplane mode/Wi-Fi/Bluetooth, the screen-off clipboard
   wipe is per-user and off by default, the per-app clipboard screen uses the existing
   `OP_READ_CLIPBOARD` AppOp without adding a framework surface, and the link scrubber keeps only
-  known functional query parameters while remaining offline.
+  known functional query parameters while remaining offline;
+* the #23 partial clears `PR_SET_DUMPABLE` only for opted-in, non-system/debuggable/profileable
+  app processes and does not pretend to be the GrapheneOS per-app policy.
 
 These are **not** runtime tests. The real verification list is in `docs/verification.md`.
 

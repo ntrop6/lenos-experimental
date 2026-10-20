@@ -16,12 +16,20 @@ follows the binding `BUILD-FLASH-LOCK.md`; flashing needs explicit approval.
        -a android.intent.action.SEND -t image/jpeg
    ```
 3. Confirm `PackageVerityExt`, `UsbPortSecurity`, `UsbPortSecurityController`,
-   `ClipboardPrivacySettings` and `LenosOpsec` are compiled (inspect the build log for the paths).
+   `ClipboardPrivacySettings`, `NativeDebuggingBlock` and `LenosOpsec` are compiled (inspect the
+   build log for the paths).
 4. Confirm no `neverallow` or hidden-API failure was introduced. The brand-new framework APIs are
-   `@hide`; Settings and `LenosOpsec` are platform apps. The USB and clipboard patches must not
-   require sepolicy changes.
+   `@hide`; Settings and `LenosOpsec` are platform apps. The USB, clipboard and native-debugging
+   patches must not require sepolicy changes.
 5. Check the experimental product does not include a browser or network code from `LenosOpsec`:
    `adb shell dumpsys package org.lenos.opsec | grep -i internet` must be empty.
+6. Run the read-only helpers before manual testing:
+   ```bash
+   OUT="out/target/product/asteroids" tools/verify-build.sh
+   ANDROID_SERIAL=... tools/verify-device.sh
+   ```
+   `verify-build.sh` only checks artifacts; `verify-device.sh` only reads properties/settings and
+   never writes, flashes, reboots or force-stops.
 
 ## #20/#21 — system-app update verification
 
@@ -186,6 +194,34 @@ This is the highest-risk item in the batch because it depends on a vendor HAL. T
 4. Use “Copy cleaned text” and compare it with the preview. Confirm the app has no network code and
    that a malformed URL is left untouched rather than crashing.
 5. Check a shortened link: the scrubber must not resolve it and the UI must not imply it is safe.
+
+## ENF-1 / #23 partial — native-debugging block
+
+This verifies the experimental global primitive, **not** GrapheneOS's per-app feature.
+
+1. Build and boot with the framework and Settings patches. Confirm **Block native debugging** is
+   off by default:
+   ```bash
+   adb shell settings get secure block_native_debugging
+   ```
+   The expected result is `null` or `0`.
+2. Enable it in **Settings → Security & privacy → More security & privacy → Block native
+   debugging**. Start a fresh non-system, non-debuggable app process and confirm its dumpable bit is
+   clear:
+   ```bash
+   adb shell pidof <package>
+   adb shell cat /proc/<pid>/status | grep -i dumpable
+   ```
+   Also verify from a same-UID non-root context that `ptrace`/`/proc/<pid>/mem` is denied. Do not
+   use this check on a production device without a recovery plan.
+3. Confirm the exemptions: a debuggable build, a profileable app and a system app must retain
+   normal debugging/profiling behavior. Confirm a newly started app after disabling the setting is
+   back to normal.
+4. Confirm root or a process with `CAP_SYS_PTRACE` (for example the crash dumper) can still collect
+   a tombstone; ENF-1 is not a root-of-trust boundary.
+5. Reboot and force-stop an app after toggling; verify the setting persists and that running
+   processes are not silently retrofitted. This is the documented global approximation, not the
+   per-app `GosPackageState` policy.
 
 ## Rollback
 
