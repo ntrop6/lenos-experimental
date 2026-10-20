@@ -27,6 +27,7 @@ upstream files are:
 | `frameworks_base/0003-usb-port-security.patch` | `core/java/android/hardware/usb/UsbPortSecurity.java`, `core/java/android/ext/settings/UsbPortSecurity.java`, `services/core/java/com/android/server/policy/keyguard/UsbPortSecurityHooks.java`, `core/java/android/hardware/usb/UsbManager.java`; AOSP `UsbService.enableUsbDataInternal` / `UsbPortManager.enableUsbData` |
 | `packages_apps_Settings/0002-usb-port-security.patch` | GrapheneOS Settings `UsbPortSecurityPrefController.java` and `exploit_protection_settings.xml` (adapted to a standalone lenOS preference fragment) |
 | `packages_apps_Seedvault/0001-grapheneos-app-id-prefix.patch` | Seedvault commit `db21e16` (internal `app.grapheneos` package prefix), binary chunker commit `61d1b60` / `libs/seedvault-chunker-0.1.jar` |
+| `packages_apps_Settings/0004-clipboard-app-access.patch` | AOSP `AppOpsManager.OP_READ_CLIPBOARD` policy; the GrapheneOS per-app `GosPackageState` switch is not ported. This is the AppOps route anticipated by the stage-2 note in §8 of the main porting guide. |
 
 ## Original lenOS work
 
@@ -36,6 +37,7 @@ upstream files are:
 | `packages_apps_SetupWizard/0001-bootloader-unlocked-warning.patch` | GrapheneOS's SetupWizard fork has no bootloader/unlocked warning; the feature was specified for lenOS and implemented against the LineageOS 23.2 wizard. |
 | `vendor_lenos/0001-opsec-tools.patch` (`LenosOpsec`) | Original lenOS OPSEC tools: a metadata-scrubbing share target and an Offline Quick Settings tile. |
 | `frameworks_base/0004-clipboard-clear-on-screen-off.patch` + `packages_apps_Settings/0003-clipboard-privacy.patch` | Original lenOS OPSEC control. AOSP has a DeviceConfig auto-clear timer, not a screen-off wipe and not a user-facing setting. |
+| `packages_apps_Settings/0004-clipboard-app-access.patch` | Original lenOS Settings UI over AOSP's existing `OP_READ_CLIPBOARD` AppOp. It does not port GrapheneOS's `GosPackageState` per-app state or its denial notification/toolbar path. |
 
 ## Deliberate deviations
 
@@ -147,6 +149,17 @@ upstream files are:
 * The wipe uses the existing internal clear path, so URI grants are revoked and listeners are
   notified. It does not clear app-owned histories, IMEs or autofill storage, and it is off by
   default because deleting clipboard content without warning is a data-loss risk.
+
+### OPS-4 — per-app clipboard access
+
+* Original lenOS UI. GrapheneOS implements per-app clipboard access with `GosPackageState` and a
+  denial notification/toolbar path; lenOS uses the existing AOSP `OP_READ_CLIPBOARD` AppOp instead.
+  That is the stage-2 route anticipated in the main §8 audit. It deliberately does not port the
+  `GosPackageState` core, the per-app state storage or the SystemUI toolbar.
+* Only user-installed apps are listed. System apps, enabled keyboards and disabled packages are
+  excluded to avoid breaking keyboard paste; shared-UID apps are shown with a warning because the
+  AppOp applies to the package, not an isolated process. The global Secure Paste setting remains
+  authoritative.
 
 ## License
 

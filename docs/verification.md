@@ -160,6 +160,22 @@ This is the highest-risk item in the batch because it depends on a vendor HAL. T
 6. Confirm clearing does not crash when the clipboard contains a URI grant or a virtual-device
    clipboard.
 
+## OPS-4 — per-app clipboard access
+
+1. Open **Settings → Security & privacy → More security & privacy → Clipboard access by app** and
+   confirm only user-installed packages appear, with labels, package names and switches.
+2. Use a test app that reads the clipboard while focused. Allow it, copy text in another app, and
+   confirm the test app can read it.
+3. Turn the test app off. Copy again and confirm the read returns null/empty while the app is
+   focused. Confirm the global Secure Paste setting still wins if it is also blocking reads.
+4. Confirm system apps and enabled keyboards are absent, and that a shared-UID package shows the warning.
+5. Toggle an app, reboot, and confirm the AppOp persists:
+   ```bash
+   adb shell cmd appops get <package> android:read_clipboard
+   ```
+6. Confirm the screen does not crash when the package list is empty or when an app is uninstalled
+   while the list is loading.
+
 ## Rollback
 
 If the build fails or the device misbehaves, use `lenos-patch.py --reset` on the source tree and

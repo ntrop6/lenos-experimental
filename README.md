@@ -36,6 +36,7 @@ window. Every patch is still a strict `git apply` diff against the same pinned t
 | **OPS-1** metadata-scrubbing share target | `vendor_lenos/0001-opsec-tools.patch` (`app/LenosOpsec`) | Implemented; re-encodes images; **not built** |
 | **OPS-2** one-tap Offline radio tile | same patch | Implemented; **not built** |
 | **OPS-3** clear clipboard on screen off | `frameworks_base/0004-clipboard-clear-on-screen-off.patch` + `packages_apps_Settings/0003-clipboard-privacy.patch` | Implemented; opt-in; **not built** |
+| **OPS-4 / #8 stage 2** per-app clipboard read control | `packages_apps_Settings/0004-clipboard-app-access.patch` | Implemented with AOSP's existing `OP_READ_CLIPBOARD` AppOps policy; **not built** |
 
 `STATUS.md` tracks the remaining untestable workstreams and the exact reason each is not in this
 batch. Do not read the table above as a statement that the rest of the roadmap is done.
@@ -77,6 +78,11 @@ metadata sanitizer, offline tile, or screen-off clipboard wipe.
   turns off airplane-mode radios but cannot prove the baseband is powered down; it does not cover
   NFC. Clipboard wiping removes the system clipboard and URI grants, not copies kept inside apps,
   IME history or autofill storage.
+* **OPS-4 lists only user-installed apps and does not override the global Secure Paste policy.**
+  It sets the existing `android:read_clipboard` AppOp to ignored for selected packages; system
+  apps, enabled keyboards and shared-UID packages are excluded or warned about in the UI. If the 1.0
+  global Secure Paste setting is off, a per-app allow cannot re-enable reads. The screen has no
+  search-index provider yet, and the AppOps mode is not a cryptographic capability boundary.
 * **No runtime evidence exists yet.** The tests are source-level only. See
   `docs/verification.md` for the checks that must pass after the first build.
 
@@ -129,8 +135,9 @@ The suite proves:
   property without blocking setup;
 * #27 uses the GrapheneOS prefix while keeping the public application id;
 * the OPSEC tools have no `INTERNET` permission or network code, the scrubber re-encodes rather
-  than copying EXIF, the Offline tile cuts airplane mode/Wi-Fi/Bluetooth, and the clipboard wipe is
-  per-user and off by default.
+  than copying EXIF, the Offline tile cuts airplane mode/Wi-Fi/Bluetooth, the screen-off clipboard
+  wipe is per-user and off by default, and the per-app clipboard screen uses the existing
+  `OP_READ_CLIPBOARD` AppOp without adding a framework surface.
 
 These are **not** runtime tests. The real verification list is in `docs/verification.md`.
 

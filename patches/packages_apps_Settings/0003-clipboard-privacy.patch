@@ -22,7 +22,7 @@ index 0068872..688e26f 100644
          settings:controller="com.android.settings.enterprise.EnterprisePrivacyPreferenceController"/>
  
 +    <Preference
-+        android:order="242"
++        android:order="245"
 +        android:key="clipboard_privacy"
 +        android:title="@string/clipboard_privacy_title"
 +        android:summary="@string/clipboard_privacy_summary"

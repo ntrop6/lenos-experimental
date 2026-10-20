@@ -18,9 +18,10 @@ does **not** mean the code compiles, boots, or behaves correctly on a device.
 | OPS-1 | Metadata-scrubbing image share target | `vendor_lenos/0001` | Needs an app build and a real share flow; verify metadata removal with an external parser |
 | OPS-2 | One-tap Offline radio tile | `vendor_lenos/0001` | Needs a system app build and airplane-mode/Wi-Fi/Bluetooth behavior on `asteroids` |
 | OPS-3 | Clear clipboard on screen off | `frameworks_base/0004` + `packages_apps_Settings/0003` | Needs a framework build and a screen-off cycle with text, image and URI clips |
+| OPS-4 / #8 stage 2 | Per-app clipboard read control | `packages_apps_Settings/0004` | Needs a Settings build and an app-op read test; the UI is source-complete and uses the existing AppOps policy |
 
-Patch count: 10 (4 frameworks/base, 3 Settings, 1 SetupWizard, 1 Seedvault, 1 vendor/lenos).
-Static tests: 55.
+Patch count: 11 (4 frameworks/base, 4 Settings, 1 SetupWizard, 1 Seedvault, 1 vendor/lenos).
+Static tests: 60.
 
 ## Still to implement (in rough order)
 
@@ -52,7 +53,9 @@ blocker rather than pretending the work is a small patch.
 
 * They do not upload anything. `LenosOpsec` has no `INTERNET` permission and no network code.
 * They do not auto-enable themselves. OPS-3 is off by default; the Offline tile must be added by
-  the user; the metadata scrubber only runs when the user shares an image with it.
+  the user; the metadata scrubber only runs when the user shares an image with it. OPS-4 only
+  changes the AppOps mode of user-installed apps the user selects; it does not list system apps or
+  enabled keyboards, and it cannot override the global Secure Paste block.
 * They do not claim a cryptographic wipe. Re-encoding removes metadata from the output file, and
   clipboard clearing removes the system clipboard and its URI grants; source files, thumbnails,
   app histories, IMEs and autofill storage are out of scope.

@@ -93,11 +93,31 @@ clear path, which revokes URI grants and notifies listeners. The switch lives in
 and on; confirm `getPrimaryClip` is empty and URI grants are revoked for a test app. Confirm the
 setting is per-user and survives a reboot.
 
+## OPS-4 / Secure Paste stage 2 — per-app clipboard read control
+
+**Problem.** The 1.0 Secure Paste control is a single global default. A user who wants to keep
+paste working for a trusted password manager or notes app must allow clipboard reads for every
+third-party app, or turn the global control off entirely. Android already has a per-app AppOp for
+this (`android:read_clipboard`, `OP_READ_CLIPBOARD`), but no Settings surface for it.
+
+**Implementation.** `ClipboardAppAccessSettings` is a Settings-only feature. It enumerates
+user-installed apps, shows a switch per package, and writes `MODE_ALLOWED` / `MODE_IGNORED` through
+`AppOpsManager.setMode`. `ClipboardService` already checks this AppOp after its focus and
+system-service exemptions, so no framework patch, new permission or new AppOp is added. The screen
+excludes system apps, updated system apps and disabled packages, and warns when an app shares a UID
+with other packages. It is independent of the global Secure Paste switch: the global block wins,
+and a per-app allow cannot override it.
+
+**Limits.** Only user-installed apps are offered; blocking system apps or enabled keyboards is not a
+supported path because it can break paste. Shared-UID packages share the mode. The screen uses a
+simple preference list (no search provider) and is not a cryptographic capability boundary: an app
+with a root compromise or a system service can still read what the system exposes. It does not
+stop an app from writing to the clipboard.
+
 ## Future OPSEC backlog (not implemented)
 
 | Idea | Why it is not in this batch |
 |---|---|
-| Per-app clipboard read toggles via `AppOpsManager.OP_READ_CLIPBOARD` | Needs a Settings app-op surface and a decision on how it composes with the 1.0 Secure Paste global default; best done with a build loop |
 | Tor-only / Orbot routing | Requires an external Tor daemon/VpnService and a product decision about supported apps; not a source-only framework patch |
 | Screenshot redaction / secure-screen automation | Needs a per-app policy and window-manager coordination; high risk of breaking banking/DRM apps |
 | File timestamp and filesystem metadata scrubbing | Needs a privileged file manager and careful handling of media sync; not a share-sheet-sized feature |
